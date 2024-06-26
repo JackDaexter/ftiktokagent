@@ -6,28 +6,20 @@ import 'package:my_app/components/datagrid.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:my_app/models/domain/Account.dart';
 
-class HomePage extends StatelessWidget{
-  const HomePage({super.key});
+class HomePage extends StatefulWidget {
+  HomePage({super.key });
+  final List<Account> accountsData = <Account>[];
 
-  Future<void> _addAccountFromFile() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['txt','json'],
-    );
+  @override
+  State<StatefulWidget> createState() => HomePageStatefull(accountsData : accountsData);
+}
 
-    if (result != null) {
-      File file = File(result.files.single.path!);
-      file.readAsString().then((String jsonContent){
-        var elem = jsonDecode(jsonContent) as Map<List<String>, List<Account>>;
-        log('jsonContent : $jsonContent');
-        log('elem : $elem');
-      });
+class HomePageStatefull extends State<HomePage>{
+  HomePageStatefull({required this.accountsData });
 
-    } else {
-      // User canceled the picker
-    }
+  final List<Account> accountsData;
 
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -35,38 +27,26 @@ class HomePage extends StatelessWidget{
     // of paper on which the UI appears.
     return Material(
       // Column is a vertical, linear layout.
+      color: Colors.grey[200],
       child: Column(
         children: [
-          Expanded(
-            child: AccountDatagrid(
-              title: "Account datagrid",
-            ),
-          ),
-          Expanded(child:  Row(
-            children: <Widget>[
+          Row(
+            children: [
               Container(
-                height: 40,
-                width: 200,
-                margin: const EdgeInsets.only(left: 20.0, right: 0.0),
-                child:FloatingActionButton(
-                  tooltip: 'Importer des comptes',
-                  onPressed: _addAccountFromFile, // null disables the button
-                  child: const Text("Importer des comptes"), // null disables the button
-                ),
-              ),
-              Expanded(
-                child:IconButton(
-                  icon: Icon(Icons.menu),
-                  tooltip: 'Navigsdsdation menu',
-                  onPressed: _addAccountFromFile, // null disables the button
+                margin:  const EdgeInsets.only(left: 10.0, top:15.0)  ,
+                height: 500,
+                width: 600,
+                child: AccountDatagrid(
+                  title: "Account datagrid",
+                  accountsData: [],
                 ),
               ),
             ],
-          ))
+          ),
+
         ],
       ),
     );
   }
-
 
 }

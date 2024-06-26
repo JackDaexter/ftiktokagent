@@ -1,4 +1,4 @@
-class SimpleProxy{
+class SimpleProxy {
   String ip;
   String port;
 

@@ -1,4 +1,4 @@
-enum Compte {
+enum Status {
   subscribe,
   unsubscribe,
 }
@@ -7,9 +7,13 @@ class Account {
   String email;
   String username;
   String password;
+  Status status;
 
   Account(
-      {required this.email, required this.username, required this.password});
+      {required this.email,
+      required this.username,
+      required this.password,
+      required this.status});
 
   // Factory method for JSON deserialization
   factory Account.fromJson(Map<String, dynamic> json) {
@@ -17,11 +21,13 @@ class Account {
       email: json['email'],
       username: json['username'],
       password: json['password'],
+      status:
+          json['status'] == 'subscribe' ? Status.subscribe : Status.unsubscribe,
     );
   }
 
   @override
   String toString() {
-    return "{ email : "+this.email+","+ "username : " + this.username + ", password :" + this.password +" }";
+    return "{ 'email': '$email', 'username': '$username', 'password': '$password', 'status': '$status' }";
   }
 }

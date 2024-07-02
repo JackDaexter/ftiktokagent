@@ -4,91 +4,70 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:my_app/models/infrastructure/AccountFileAdapter.dart';
+import 'package:my_app/usecases/CreateRandomGmailAccount.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 
+import '../core/Streamer.dart';
 import '../models/domain/Account.dart';
 import '../models/mapping/AccountDataSource.dart';
+import '../models/mapping/StreamingDataSource.dart';
 
 class AccountDatagrid extends StatefulWidget {
-  const AccountDatagrid({super.key,required this.accountsData, required this.title});
+  Function accountCallback;
+  Function streamerCallback;
 
-  Future<List<dynamic>> _addAccountFromFile() async {
-    FilePickerResult? result = await FilePicker.platform
-        .pickFiles(type: FileType.custom, allowedExtensions: ['txt', 'json']);
-
-    if (result != null) {
-      File file = File(result.files.single.path!);
-
-      file.readAsString().then((String accountsStringFormat) {
-        try {
-          List<dynamic> accountsJsonFormat = jsonDecode(accountsStringFormat);
-          List<Account> accounts = accountsJsonFormat
-              .map((jsonAccount) => Account.fromJson(jsonAccount))
-              .toList();
-          return accounts;
-        } catch (Exception) {}
-        return [];
-      });
-    }
-    return [];
-  }
-
-  final String title;
-  final List<Account> accountsData;
+  AccountDatagrid(
+      {super.key,
+      required this.accountCallback,
+      required this.streamerCallback});
 
   @override
-  State<AccountDatagrid> createState() => _AccountDatagridState(accountsData: accountsData);
+  State<AccountDatagrid> createState() => _AccountDatagridState();
 }
 
 class _AccountDatagridState extends State<AccountDatagrid> {
-  late AccountDataSource accountDataSource;
+  List<Account> accountsData = <Account>[];
+  List<Streamer> streamerInstances = <Streamer>[];
+
+  late AccountDataSource accountDataSource = AccountDataSource(accountData: []);
+  late StreamingDataSource streamingDataSource =
+      StreamingDataSource(streamingData: []);
+  AccountFileAdapter accountFileAdapter = AccountFileAdapter(path: '');
+
   final TextEditingController emailController = TextEditingController();
   final TextEditingController usernameController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final DataGridController dataGridController = DataGridController();
-  bool isEmailValid = true;
-  bool isUsernameValid = true;
-  bool isPasswordValid = true;
-  bool AddAnAccount = false;
-  final List<Account> accountsData;
+  final createRandomGmailAccount = CreateRandomGmailAccount();
 
-  _AccountDatagridState({required this.accountsData});
+  bool AddAnAccount = false;
+
+  _AccountDatagridState();
 
   @override
   void initState() {
     super.initState();
-    loadAccountsFromPreviousSession();
-
-    accountDataSource = AccountDataSource(accountData: accountsData);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      loadAccountsFromPreviousSession();
+    });
   }
 
-  Future<void> _addAccountFromFile() async {
-    final prefs = await SharedPreferences.getInstance();
-    FilePickerResult? result = await FilePicker.platform
-        .pickFiles(type: FileType.custom, allowedExtensions: ['txt', 'json']);
+  Future<void> _importAccountFromFile() async {
+    var accounts = await accountFileAdapter.loadAllAccountsAsync();
 
-    if (result != null) {
-      File file = File(result.files.single.path!);
-      await prefs.setString('accountFilePath', result.files.single.path!);
-      await prefs.setString('accountFileName', result.files.single.name);
-
-      file.readAsString().then((String accountsStringFormat) async {
-        try {
-          List<dynamic> accountsJsonFormat = jsonDecode(accountsStringFormat);
-
-          List<Account> accounts = accountsJsonFormat
-              .map((jsonAccount) => Account.fromJson(jsonAccount))
-              .toList();
-          await prefs.setString('savedAccountsFromFile', accountsStringFormat);
-
-
-          accountDataSource = AccountDataSource(accountData: accountsData);
-        } catch (Exception) {}
-      });
-    } else {
-      // User canceled the picker
+    if (accounts.isEmpty) {
+      log('No accounts found');
+      return;
     }
+    setState(() {
+      accountsData = accounts;
+      widget.accountCallback(accounts);
+      accountDataSource = AccountDataSource(accountData: accountsData);
+      streamingDataSource =
+          StreamingDataSource(streamingData: streamerInstances);
+    });
   }
 
   @override
@@ -108,7 +87,7 @@ class _AccountDatagridState extends State<AccountDatagrid> {
                         margin: const EdgeInsets.only(left: 20.0, right: 0.0),
                         child: OutlinedButton(
                             onPressed:
-                                _addAccountFromFile, // null disables the button
+                                _importAccountFromFile, // null disables the button
                             child: Row(children: [
                               Icon(
                                 Icons.file_download,
@@ -144,11 +123,33 @@ class _AccountDatagridState extends State<AccountDatagrid> {
                             ]) // null disables the button
                             ))
                   ])),
+              Container(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Row(children: <Widget>[
+                    Container(
+                        height: 25,
+                        margin: const EdgeInsets.only(left: 20.0, right: 0.0),
+                        child: OutlinedButton(
+                            onPressed:
+                                generateRandomGmailAccount, // null disables the button
+                            child: Row(children: [
+                              Icon(
+                                Icons.generating_tokens,
+                                size: 16.0,
+                              ),
+                              SizedBox(width: 5),
+                              Text(
+                                "Générer des comptes",
+                                style: TextStyle(fontSize: 12.0),
+                              )
+                            ]) // null disables the button
+                            ))
+                  ])),
             ],
           ),
           SfDataGrid(
               selectionMode: SelectionMode.single,
-              source: accountDataSource,
+              source: streamingDataSource,
               allowPullToRefresh: true,
               controller: dataGridController,
               columnWidthMode: ColumnWidthMode.fill,
@@ -166,12 +167,19 @@ class _AccountDatagridState extends State<AccountDatagrid> {
                         alignment: Alignment.center,
                         child: Text('Username'))),
                 GridColumn(
-                    columnName: 'password',
+                    columnName: 'AccountStatus',
                     label: Container(
                         padding: EdgeInsets.all(8.0),
                         alignment: Alignment.center,
                         child:
-                            Text('Password', overflow: TextOverflow.ellipsis)))
+                            Text('Status', overflow: TextOverflow.ellipsis))),
+                GridColumn(
+                    columnName: 'StreamingStatus',
+                    label: Container(
+                        padding: EdgeInsets.all(8.0),
+                        alignment: Alignment.center,
+                        child: Text('StreamingStatus',
+                            overflow: TextOverflow.ellipsis)))
               ]),
           Center(
               child: AddAnAccount
@@ -269,14 +277,29 @@ class _AccountDatagridState extends State<AccountDatagrid> {
                       onPressed:
                           onSaveAccountUpdate, // null disables the button
                       child: Row(children: [
-                        Icon(
-                          Icons.save,
-                          size: 16.0,
-                        ),
+                        Icon(Icons.save, size: 16.0, color: Colors.white),
                         SizedBox(width: 5),
                         Text(
-                          "Sauvegarder ",
-                          style: TextStyle(fontSize: 12.0),
+                          "Sauvegarder",
+                          style: TextStyle(fontSize: 13.0, color: Colors.white),
+                        )
+                      ]) // null disables the button
+                      ),
+                ),
+                Container(
+                  padding: EdgeInsets.only(bottom: 10, right: 10),
+                  child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent),
+                      onPressed:
+                          onRemoveSelectedAccount, // null disables the button
+                      child: Row(children: [
+                        Icon(Icons.remove_circle,
+                            size: 16.0, color: Colors.white),
+                        SizedBox(width: 5),
+                        Text(
+                          "Remove",
+                          style: TextStyle(fontSize: 12.0, color: Colors.white),
                         )
                       ]) // null disables the button
                       ),
@@ -294,8 +317,11 @@ class _AccountDatagridState extends State<AccountDatagrid> {
     var username = usernameController.text;
     var email = emailController.text;
     var password = passwordController.text;
-    accountsData
-        .add(Account(email: email, username: username, password: password));
+    accountsData.add(Account(
+        email: email,
+        username: username,
+        password: password,
+        status: Status.unsubscribe));
     accountDataSource = AccountDataSource(accountData: accountsData);
     _deactivateAccountAdding();
     cleanControllers();
@@ -321,47 +347,87 @@ class _AccountDatagridState extends State<AccountDatagrid> {
     passwordController.clear();
   }
 
-  void removeSelectedAccount() {
-    var selectedAccount = dataGridController.selectedRow;
+  void onRemoveSelectedAccount() {
+    if (dataGridController.selectedIndex != -1) {
+      var indexSelectedAccount = dataGridController.selectedIndex;
+
+      accountsData.removeAt(indexSelectedAccount);
+      streamerInstances.removeAt(indexSelectedAccount);
+
+      widget.accountCallback(accountsData);
+      accountDataSource = AccountDataSource(accountData: accountsData);
+
+      widget.streamerCallback(streamerInstances);
+      streamingDataSource =
+          StreamingDataSource(streamingData: streamerInstances);
+    }
   }
 
   Future<void> loadAccountsFromPreviousSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedAccountFromFile = prefs.getString('savedAccountsFromFile');
-    if (savedAccountFromFile != null) {
-      try {
-        List<dynamic> accountsJsonFormat = jsonDecode(savedAccountFromFile);
-
-        List<Account> accounts = accountsJsonFormat
-            .map((jsonAccount) => Account.fromJson(jsonAccount))
-            .toList();
-
-        setState(() {
-          //accountsData = accounts;
-        });
-        accountDataSource = AccountDataSource(accountData: accountsData);
-      } catch (Exception) {}
+    var accounts =
+        await accountFileAdapter.loadAllAccountsFromPreviousSessionAsync();
+    if (accounts.isEmpty) {
+      log('No accounts found');
+      return;
     }
+    updateAccountStates(accounts);
+    loadStreamerInstancesFromAccount();
   }
 
   Future<void> onSaveAccountUpdate() async {
-    final prefs = await SharedPreferences.getInstance();
+    await accountFileAdapter.saveMultipleAccounts(accountsData);
+  }
 
-    final accountFileName = prefs.getString('accountFileName');
-    final accountFilePath = prefs.getString('accountFilePath');
+  Future<void> saveAccountUpdateInLocalStorage() async {
+    await accountFileAdapter.saveMultipleAccounts(accountsData);
+  }
 
-    if (accountFilePath != null) {
-      try {
-        var encodedAccountData = jsonEncode(accountsData.first.toString());
-        File file = File(accountFilePath);
-        file.writeAsString(encodedAccountData);
-      } catch (exception, e) {
-        log(accountsData.first.toString());
-        log(exception.toString());
-        log(e.toString());
-      }
+  Future<void> generateRandomGmailAccount() async {
+    List<Account> accounts = accountsData;
+    List<Streamer> streamers = streamerInstances;
+
+    for (var i = 0; i < 3; i++) {
+      var account = await createRandomGmailAccount.generateEmail();
+      var username = account.split('@')[0];
+      accounts.add(new Account(
+          email: account,
+          username: username,
+          password: 'password1234',
+          status: Status.unsubscribe));
+      streamers.add(new Streamer(accountData: accounts.last));
+    }
+
+    updateAccountStates(accounts);
+    updateStreamerStates(streamers);
+  }
+
+  void loadStreamerInstancesFromAccount() {
+    List<Streamer> streamers = [];
+
+    for (var account in accountsData) {
+      streamers.add(new Streamer(accountData: account));
+    }
+    updateStreamerStates(streamers);
+  }
+
+  void updateStreamerStates(List<Streamer>? streamers) {
+    if (streamers != null) {
+      setState(() {
+        widget.streamerCallback(streamers);
+        streamerInstances.addAll(streamers);
+        streamingDataSource =
+            StreamingDataSource(streamingData: streamerInstances);
+      });
     }
   }
 
-  void saveAccountUpdateInLocalStorage() {}
+  void updateAccountStates(List<Account>? accounts) {
+    if (accounts != null) {
+      setState(() {
+        accountsData = accounts;
+        widget.accountCallback(accounts);
+        accountDataSource = AccountDataSource(accountData: accountsData);
+      });
+    }
+  }
 }

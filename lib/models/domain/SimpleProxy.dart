@@ -2,5 +2,5 @@ class SimpleProxy {
   String ip;
   String port;
 
-  SimpleProxy(this.port, this.ip);
+  SimpleProxy({required this.port, required this.ip});
 }

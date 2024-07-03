@@ -1,12 +1,8 @@
-import 'dart:convert';
 import 'dart:developer';
-import 'dart:io';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:my_app/models/infrastructure/AccountFileAdapter.dart';
 import 'package:my_app/usecases/CreateRandomGmailAccount.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 
 import '../core/Streamer.dart';
@@ -75,7 +71,7 @@ class _AccountDatagridState extends State<AccountDatagrid> {
     return Material(
         child: Column(children: [
       Container(
-        color: Colors.blueGrey.withOpacity(0.2),
+        color: Colors.white,
         child: Column(children: [
           Row(
             children: [
@@ -147,45 +143,50 @@ class _AccountDatagridState extends State<AccountDatagrid> {
                   ])),
             ],
           ),
-          SfDataGrid(
-              selectionMode: SelectionMode.single,
-              source: streamingDataSource,
-              allowPullToRefresh: true,
-              controller: dataGridController,
-              columnWidthMode: ColumnWidthMode.fill,
-              columns: <GridColumn>[
-                GridColumn(
-                    columnName: 'email',
-                    label: Container(
-                        padding: EdgeInsets.all(16.0),
-                        alignment: Alignment.center,
-                        child: Text('Email'))),
-                GridColumn(
-                    columnName: 'username',
-                    label: Container(
-                        padding: EdgeInsets.all(8.0),
-                        alignment: Alignment.center,
-                        child: Text('Username'))),
-                GridColumn(
-                    columnName: 'AccountStatus',
-                    label: Container(
-                        padding: EdgeInsets.all(8.0),
-                        alignment: Alignment.center,
-                        child:
-                            Text('Status', overflow: TextOverflow.ellipsis))),
-                GridColumn(
-                    columnName: 'StreamingStatus',
-                    label: Container(
-                        padding: EdgeInsets.all(8.0),
-                        alignment: Alignment.center,
-                        child: Text('StreamingStatus',
-                            overflow: TextOverflow.ellipsis)))
-              ]),
+          SizedBox(
+
+            width: 800,
+            height: 407,
+            child: SfDataGrid(
+                selectionMode: SelectionMode.single,
+                source: streamingDataSource,
+                allowPullToRefresh: true,
+                controller: dataGridController,
+                columnWidthMode: ColumnWidthMode.fill,
+                columns: <GridColumn>[
+                  GridColumn(
+                      columnName: 'email',
+                      label: Container(
+                          padding: EdgeInsets.all(16.0),
+                          alignment: Alignment.center,
+                          child: Text('Email'))),
+                  GridColumn(
+                      columnName: 'username',
+                      label: Container(
+                          padding: EdgeInsets.all(8.0),
+                          alignment: Alignment.center,
+                          child: Text('Username'))),
+                  GridColumn(
+                      columnName: 'AccountStatus',
+                      label: Container(
+                          padding: EdgeInsets.all(8.0),
+                          alignment: Alignment.center,
+                          child:
+                              Text('Status', overflow: TextOverflow.ellipsis))),
+                  GridColumn(
+                      columnName: 'StreamingStatus',
+                      label: Container(
+                          padding: EdgeInsets.all(8.0),
+                          alignment: Alignment.center,
+                          child: Text('StreamingStatus',
+                              overflow: TextOverflow.ellipsis)))
+                ]),
+          ),
           Center(
               child: AddAnAccount
                   ? Container(
                       padding: const EdgeInsets.only(
-                          left: 20.0, right: 20.0, top: 10.0, bottom: 10.0),
+                          left: 20.0, right: 20.0, top: 10.0, bottom: 0.0),
                       color: Colors.grey[300],
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment
@@ -196,7 +197,7 @@ class _AccountDatagridState extends State<AccountDatagrid> {
                             children: [
                               SizedBox(
                                 height: 30,
-                                width: 200,
+                                width: 150,
                                 child: TextField(
                                   style: TextStyle(fontSize: 12),
                                   controller: emailController,
@@ -211,7 +212,7 @@ class _AccountDatagridState extends State<AccountDatagrid> {
                                 height: 30,
                                 width: 200,
                                 child: TextField(
-                                  style: TextStyle(fontSize: 12),
+                                  style: const TextStyle(fontSize: 12),
                                   controller: usernameController,
                                   obscureText: false,
                                   decoration: InputDecoration(
@@ -276,7 +277,7 @@ class _AccountDatagridState extends State<AccountDatagrid> {
                           backgroundColor: Colors.blueAccent),
                       onPressed:
                           onSaveAccountUpdate, // null disables the button
-                      child: Row(children: [
+                      child: const Row(children: [
                         Icon(Icons.save, size: 16.0, color: Colors.white),
                         SizedBox(width: 5),
                         Text(
@@ -287,13 +288,13 @@ class _AccountDatagridState extends State<AccountDatagrid> {
                       ),
                 ),
                 Container(
-                  padding: EdgeInsets.only(bottom: 10, right: 10),
+                  padding: const EdgeInsets.only(bottom: 10, right: 10),
                   child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.redAccent),
                       onPressed:
                           onRemoveSelectedAccount, // null disables the button
-                      child: Row(children: [
+                      child: const Row(children: [
                         Icon(Icons.remove_circle,
                             size: 16.0, color: Colors.white),
                         SizedBox(width: 5),
@@ -309,7 +310,6 @@ class _AccountDatagridState extends State<AccountDatagrid> {
           )
         ]),
       ),
-      SizedBox(height: 10),
     ]));
   }
 
@@ -323,6 +323,16 @@ class _AccountDatagridState extends State<AccountDatagrid> {
         password: password,
         status: Status.unsubscribe));
     accountDataSource = AccountDataSource(accountData: accountsData);
+    setState(() {
+      streamerInstances.add(new Streamer(
+          accountData: Account(
+              email: email,
+              username: username,
+              password: password,
+              status: Status.unsubscribe)));
+      streamingDataSource =
+          StreamingDataSource(streamingData: streamerInstances);
+    });
     _deactivateAccountAdding();
     cleanControllers();
   }
@@ -383,8 +393,8 @@ class _AccountDatagridState extends State<AccountDatagrid> {
   }
 
   Future<void> generateRandomGmailAccount() async {
-    List<Account> accounts = accountsData;
-    List<Streamer> streamers = streamerInstances;
+    List<Account> accounts = [];
+    List<Streamer> streamers = [];
 
     for (var i = 0; i < 3; i++) {
       var account = await createRandomGmailAccount.generateEmail();
@@ -396,6 +406,8 @@ class _AccountDatagridState extends State<AccountDatagrid> {
           status: Status.unsubscribe));
       streamers.add(new Streamer(accountData: accounts.last));
     }
+    streamers.addAll(streamerInstances);
+    accounts.addAll(accountsData);
 
     updateAccountStates(accounts);
     updateStreamerStates(streamers);
@@ -414,7 +426,7 @@ class _AccountDatagridState extends State<AccountDatagrid> {
     if (streamers != null) {
       setState(() {
         widget.streamerCallback(streamers);
-        streamerInstances.addAll(streamers);
+        streamerInstances = streamers;
         streamingDataSource =
             StreamingDataSource(streamingData: streamerInstances);
       });

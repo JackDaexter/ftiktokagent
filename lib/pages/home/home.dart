@@ -48,98 +48,102 @@ class HomePageStatefull extends State<HomePage> {
     return Material(
       // Column is a vertical, linear layout.
       color: Colors.grey[200],
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                margin: EdgeInsets.only(left: 10.0, top: 15.0),
-                height: 400,
-                width: 800,
-                child: AccountDatagrid(
-                  accountCallback: accountCallback,
-                  streamerCallback: streamerCallback,
+      child: Container(
+        padding: EdgeInsets.all(10.0),
+        child: Column(
+
+
+          children: [
+            Row(
+              children: [
+                Container(
+                  margin: EdgeInsets.only(left: 10.0, top: 15.0),
+                  height: 550,
+                  width: 800,
+                  child: AccountDatagrid(
+                    accountCallback: accountCallback,
+                    streamerCallback: streamerCallback,
+                  ),
                 ),
-              ),
-              SizedBox(width: 30), // give it width
-              Center(
-                  child: Card(
-                // clipBehavior is necessary because, without it, the InkWell's animation
-                // will extend beyond the rounded edges of the [Card] (see https://github.com/flutter/flutter/issues/109776)
-                // This comes with a small performance cost, and you should not set [clipBehavior]
-                // unless you need it.
-                clipBehavior: Clip.hardEdge,
-                child: InkWell(
-                  splashColor: Colors.blue.withAlpha(30),
-                  onTap: () {
-                    debugPrint('Card tapped.');
-                  },
-                  child: SizedBox(
-                      width: 300,
-                      height: 200,
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: <Widget>[
-                            Center(
-                              child: Text(
-                                'Nombre de proxy chargés: ${proxiesData.length}',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: 30),
-                            Column(
-                              children: [
-                                ElevatedButton(
-                                  onPressed: _importProxyFromFile,
-                                  child: Text('Importer des proxies'),
-                                ),
-                                SizedBox(height: 10),
-                                ElevatedButton(
-                                  onPressed: _removeProxies,
-                                  child: Text('Supprimer les proxies'),
-                                  style: ButtonStyle(
-                                    textStyle:
-                                        WidgetStateProperty.all<TextStyle>(
-                                      TextStyle(
-                                        color: Colors.white,
+                SizedBox(width: 30), // give it width
+                Center(
+                    child: Card(
+                      // clipBehavior is necessary because, without it, the InkWell's animation
+                      // will extend beyond the rounded edges of the [Card] (see https://github.com/flutter/flutter/issues/109776)
+                      // This comes with a small performance cost, and you should not set [clipBehavior]
+                      // unless you need it.
+                      clipBehavior: Clip.hardEdge,
+                      child: InkWell(
+                        splashColor: Colors.blue.withAlpha(30),
+                        onTap: () {
+                          debugPrint('Card tapped.');
+                        },
+                        child: SizedBox(
+                            width: 300,
+                            height: 200,
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: <Widget>[
+                                  Center(
+                                    child: Text(
+                                      'Nombre de proxy chargés: ${proxiesData.length}',
+                                      style: TextStyle(
+                                        fontSize: 15,
                                       ),
                                     ),
-                                    backgroundColor:
-                                        MaterialStateProperty.all<Color>(
-                                            Colors.red),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      )),
-                ),
-              )),
-            ],
-          ),
-          Expanded(child: SizedBox.shrink()), // <-- Expanded
+                                  SizedBox(height: 30),
+                                  Column(
+                                    children: [
+                                      ElevatedButton(
+                                        onPressed: _importProxyFromFile,
+                                        child: Text('Importer des proxies'),
+                                      ),
+                                      SizedBox(height: 10),
+                                      ElevatedButton(
+                                        onPressed: _removeProxies,
+                                        child: Text('Supprimer les proxies'),
+                                        style: ButtonStyle(
+                                          textStyle:
+                                          WidgetStateProperty.all<TextStyle>(
+                                            TextStyle(
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                          backgroundColor:
+                                          MaterialStateProperty.all<Color>(
+                                              Colors.red),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            )),
+                      ),
+                    )),
+              ],
+            ),
+            const Expanded(child: SizedBox.shrink()), // <-- Expanded
 
-          Center(
-            child: ElevatedButton(
-                onPressed: _startStreaming,
-                child: Text('Start streaming'),
-                style: ButtonStyle(
-                  textStyle: WidgetStateProperty.all<TextStyle>(
-                    TextStyle(
-                      fontSize: 20,
-                      color: Colors.white,
-                    ),
-                  ),
-                  backgroundColor:
-                      MaterialStateProperty.all<Color>(Colors.blue),
+            Center(
+                child: SizedBox(
+                  width: 280,
+                  child: Center(
+                      child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green),
+                          onPressed: _startStreaming,
+                          child: Text(
+                            "Lancer le bot",
+                            style: TextStyle(fontSize: 18.0, color: Colors.white),
+                          ))),
                 )),
-          )
-        ],
-      ),
+            const SizedBox(height: 20)
+          ],
+        ),
+      )
     );
   }
 

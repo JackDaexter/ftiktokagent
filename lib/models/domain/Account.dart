@@ -21,8 +21,7 @@ class Account {
       email: json['email'],
       username: json['username'],
       password: json['password'],
-      status:
-          json['status'] == 'subscribe' ? Status.subscribe : Status.unsubscribe,
+      status: Status.subscribe,
     );
   }
 

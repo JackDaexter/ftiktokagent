@@ -102,7 +102,7 @@ class AccountFileAdapter implements IObtainAccounts {
   }
 
   @override
-  Future<void> saveMultipleAccounts(List<Account> accounts) async {
+  Future<bool> saveMultipleAccounts(List<Account> accounts) async {
     final prefs = await SharedPreferences.getInstance();
 
     final accountFilePath = prefs.getString('accountFilePath');
@@ -114,15 +114,19 @@ class AccountFileAdapter implements IObtainAccounts {
 
         file.writeAsString(
             encodedDataFile.replaceAll("\"", "").replaceAll("\'", "\""));
+
+        return true;
       } catch (exception, e) {
         log(exception.toString());
       }
     } else {
-      await SaveAccountsInDefaultDocumentFolder(accounts);
+      var status = await SaveAccountsInDefaultDocumentFolder(accounts);
+      return status;
     }
+    return false;
   }
 
-  Future<void> SaveAccountsInDefaultDocumentFolder(
+  Future<bool> SaveAccountsInDefaultDocumentFolder(
       List<Account> accounts) async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -138,9 +142,11 @@ class AccountFileAdapter implements IObtainAccounts {
       var encodedDataFile = jsonEncode(accounts.toString());
       file.writeAsString(
           encodedDataFile.replaceAll("\"", "").replaceAll("\'", "\""));
+      return true;
     } catch (exception, e) {
       log(exception.toString());
       log(e.toString());
     }
+    return false;
   }
 }

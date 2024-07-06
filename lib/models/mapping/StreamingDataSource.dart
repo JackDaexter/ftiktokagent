@@ -7,13 +7,12 @@ class StreamingDataSource extends DataGridSource {
   StreamingDataSource({required List<Streamer> streamingData}) {
     _streamingData = streamingData
         .map<DataGridRow>((e) => DataGridRow(cells: [
+              DataGridCell<String>(columnName: 'email', value: e.account.email),
               DataGridCell<String>(
-                  columnName: 'email', value: e.accountData.email),
+                  columnName: 'username', value: e.account.username),
               DataGridCell<String>(
-                  columnName: 'username', value: e.accountData.username),
-              DataGridCell<String>(
-                  columnName: 'subscription status',
-                  value: e.accountIsSubscribed.toString()),
+                  columnName: 'account_status',
+                  value: e.account.status.toString()),
               DataGridCell<String>(
                   columnName: 'streaming status',
                   value: e.browserStatus.toString()),

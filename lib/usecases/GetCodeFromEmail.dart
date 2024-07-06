@@ -9,13 +9,12 @@ class AccountObject {
   AccountObject({required this.email});
 }
 
-class CreateRandomGmailAccount {
+class GetCodeFromEmail {
   //final IObtainAccounts accountRepository;
-  CreateRandomGmailAccount();
+  GetCodeFromEmail();
 
   Future<String> generateEmail() async {
     Map<String, dynamic> response = await GmailGeneratorApi.generateEmail();
-    log(response.toString());
     var account = response['email'];
     log(account);
     return account;

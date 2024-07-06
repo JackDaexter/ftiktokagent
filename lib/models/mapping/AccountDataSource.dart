@@ -26,7 +26,9 @@ class AccountDataSource extends DataGridSource {
       return Container(
         alignment: Alignment.center,
         padding: EdgeInsets.all(8.0),
-        child: Text(e.value.toString()),
+        child: Text(
+          e.value.toString(),
+        ),
       );
     }).toList());
   }

@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:developer';
+import 'dart:isolate';
 import 'package:flutter/material.dart';
-import 'package:my_app/components/datagrid.dart';
+import 'package:my_app/pages/home/datagrid/datagrid.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:my_app/models/domain/Account.dart';
 import 'package:my_app/models/domain/SimpleProxy.dart';
@@ -46,105 +47,121 @@ class HomePageStatefull extends State<HomePage> {
     // Material is a conceptual piece
     // of paper on which the UI appears.
     return Material(
-      // Column is a vertical, linear layout.
-      color: Colors.grey[200],
-      child: Container(
-        padding: EdgeInsets.all(10.0),
-        child: Column(
-
-
-          children: [
-            Row(
-              children: [
-                Container(
-                  margin: EdgeInsets.only(left: 10.0, top: 15.0),
-                  height: 550,
-                  width: 800,
-                  child: AccountDatagrid(
-                    accountCallback: accountCallback,
-                    streamerCallback: streamerCallback,
+        // Column is a vertical, linear layout.
+        color: Colors.grey[200],
+        child: Container(
+          padding: EdgeInsets.all(10.0),
+          child: Column(
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    margin: EdgeInsets.only(left: 10.0, top: 5.0),
+                    height: 600,
+                    width: 800,
+                    child: AccountDatagrid(
+                      accountCallback: accountCallback,
+                      streamerCallback: streamerCallback,
+                    ),
                   ),
-                ),
-                SizedBox(width: 30), // give it width
-                Center(
-                    child: Card(
-                      // clipBehavior is necessary because, without it, the InkWell's animation
-                      // will extend beyond the rounded edges of the [Card] (see https://github.com/flutter/flutter/issues/109776)
-                      // This comes with a small performance cost, and you should not set [clipBehavior]
-                      // unless you need it.
-                      clipBehavior: Clip.hardEdge,
-                      child: InkWell(
-                        splashColor: Colors.blue.withAlpha(30),
-                        onTap: () {
-                          debugPrint('Card tapped.');
-                        },
-                        child: SizedBox(
-                            width: 300,
-                            height: 200,
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: <Widget>[
-                                  Center(
-                                    child: Text(
-                                      'Nombre de proxy chargés: ${proxiesData.length}',
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                      ),
-                                    ),
+                  SizedBox(width: 30), // give it width
+                  Container(
+                      child: Card(
+                    // clipBehavior is necessary because, without it, the InkWell's animation
+                    // will extend beyond the rounded edges of the [Card] (see https://github.com/flutter/flutter/issues/109776)
+                    // This comes with a small performance cost, and you should not set [clipBehavior]
+                    // unless you need it.
+                    color: Colors.white,
+                    clipBehavior: Clip.hardEdge,
+                    child: SizedBox(
+                      width: 300,
+                      height: 180,
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: <Widget>[
+                            Center(
+                                child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.security,
+                                    color: Colors.green, size: 20),
+                                const SizedBox(width: 10),
+                                Text(
+                                  'Nombre de proxy chargés: ${proxiesData.length}',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
                                   ),
-                                  SizedBox(height: 30),
-                                  Column(
-                                    children: [
-                                      ElevatedButton(
-                                        onPressed: _importProxyFromFile,
-                                        child: Text('Importer des proxies'),
-                                      ),
-                                      SizedBox(height: 10),
-                                      ElevatedButton(
-                                        onPressed: _removeProxies,
-                                        child: Text('Supprimer les proxies'),
-                                        style: ButtonStyle(
-                                          textStyle:
+                                ),
+                              ],
+                            )),
+                            const SizedBox(height: 30),
+                            Column(
+                              children: [
+                                ElevatedButton(
+                                    onPressed: _importProxyFromFile,
+                                    style: ButtonStyle(
+                                      textStyle:
                                           WidgetStateProperty.all<TextStyle>(
-                                            TextStyle(
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                          backgroundColor:
-                                          MaterialStateProperty.all<Color>(
-                                              Colors.red),
+                                        const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w400,
                                         ),
                                       ),
-                                    ],
+                                      backgroundColor:
+                                          WidgetStateProperty.all<Color>(
+                                        Colors.white,
+                                      ),
+                                    ),
+                                    child: Text('Importer des proxies')),
+                                const SizedBox(height: 10),
+                                ElevatedButton(
+                                  onPressed: _removeProxies,
+                                  child: Text('Supprimer les proxies'),
+                                  style: ButtonStyle(
+                                    textStyle:
+                                        WidgetStateProperty.all<TextStyle>(
+                                      TextStyle(
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    backgroundColor:
+                                        WidgetStateProperty.all<Color>(
+                                      Colors.redAccent,
+                                    ),
                                   ),
-                                ],
-                              ),
-                            )),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    )),
-              ],
-            ),
-            const Expanded(child: SizedBox.shrink()), // <-- Expanded
+                    ),
+                  )),
+                ],
+              ),
+              const Expanded(child: SizedBox.shrink()), // <-- Expanded
 
-            Center(
-                child: SizedBox(
-                  width: 280,
-                  child: Center(
-                      child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green),
-                          onPressed: _startStreaming,
-                          child: Text(
-                            "Lancer le bot",
-                            style: TextStyle(fontSize: 18.0, color: Colors.white),
-                          ))),
-                )),
-            const SizedBox(height: 20)
-          ],
-        ),
-      )
-    );
+              Center(
+                  child: SizedBox(
+                height: 30,
+                width: 280,
+                child: Center(
+                    child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green),
+                        onPressed: _startStreaming,
+                        child: Text(
+                          "Lancer le bot",
+                          style: TextStyle(fontSize: 18.0, color: Colors.white),
+                        ))),
+              )),
+              const SizedBox(height: 0)
+            ],
+          ),
+        ));
   }
 
   Future<void> _importProxyFromFile() async {
@@ -188,9 +205,13 @@ class HomePageStatefull extends State<HomePage> {
     });
   }
 
-  void _startStreaming() {
+  void _startStreaming() async {
+    var receivePort = new ReceivePort();
+
     var accountData = this.accountsData.first;
-    var streamer = Streamer(accountData: accountData);
-    streamer.Start();
+    log(accountData.toString());
+    var streamer = Streamer(account: accountData);
+
+    await Isolate.spawn(streamer.start, receivePort.sendPort);
   }
 }

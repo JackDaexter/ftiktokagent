@@ -1,10 +1,13 @@
 import 'dart:developer';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:math' as math;
 
 import 'package:my_app/models/domain/Account.dart';
 import 'package:my_app/models/domain/SimpleProxy.dart';
 import 'package:webdriver/async_io.dart';
+
+import '../api/get_email_gmail.dart';
 
 enum BotStatus { Running, Stopped, Inactive }
 
@@ -48,15 +51,14 @@ const List<String> tikTokTrends = <String>[
 ];
 
 class Streamer {
-  Account accountData;
+  Account account;
   SimpleProxy? proxieData;
   late WebDriver driver;
   var numberOfStream = 0;
   var browserStatus = BrowserStatus.Inactive;
-  var accountIsSubscribed = Status.unsubscribe;
   var wasBlocked = false;
 
-  Streamer({required this.accountData, proxieData, driver})
+  Streamer({required this.account, proxieData, driver})
       : this.proxieData = proxieData;
 
   Future<void> browserSetup() async {
@@ -68,7 +70,6 @@ class Streamer {
             'args': [
               '--disable-gpu',
               '--no-sandbox',
-              '--disable-dev-shm-usage',
               '--disable-extensions',
               '--disable-popup-blocking',
               '--mute-audio'
@@ -77,7 +78,7 @@ class Streamer {
         });
   }
 
-  Future<void> Start() async {
+  void start(SendPort sendport) async {
     Process chromeDriverProcess = await Process.start(
         'C:\\Users\\franc\\IdeaProjects\\ftiktokagent\\lib\\core\\chromedriver.exe',
         ['--port=4444', '--url-base=wd/hub']);
@@ -87,93 +88,94 @@ class Streamer {
       await browserSetup();
       browserStatus = BrowserStatus.Running;
 
-      var duration = const Duration(seconds: 20);
-      await driver.timeouts.setImplicitTimeout(const Duration(seconds: 20));
+      await driver.timeouts.setImplicitTimeout(const Duration(seconds: 10));
       await driver.get('https://www.tiktok.com');
 
-      // Take a simple screenshot
       var url = driver.currentUrl.toString();
-      if (url.contains("redirect_url")) {
-        log("Redirecting to login page");
-        await loginForRedirect(wasBlocked);
-      } else {
-        log("Else of redirection to login page");
-        //await driver.keyboard.sendKeys(Keyboard.escape);
-        var element = await driver
-            .findElement(By.xpath("//*[@id=\"header-login-button\"]"));
-        await element.click();
-
-        var loginButtonInContainer = await driver.findElement(
-            By.xpath("//*[@id=\"loginContainer\"]/div/div/div/div[2]"));
-        await loginButtonInContainer.click();
-      }
-
-      if (await ConnexionPageIsPresent(driver)) {
-        log("Ferme ta gueule");
-
-        FillConnexionField(driver);
-      } else {
-        log("My little dog");
-
-        await driver
-            .findElement(
-                By.xpath("//*[@id=\"loginContainer\"]/div/form/div[1]/a"))
-            .then((elem) async => await elem.click());
-
-        if (await WeAreOnPhoneAccountCreation(driver)) {
-          await driver
-              .findElement(
-                  By.xpath("//*[@id=\"loginContainer\"]/div[2]/form/div[1]/a"))
-              .then((elem) async => await elem.click());
-        }
-        FillConnexionField(driver);
-      }
-      StreamWhileNonStop();
+      await subscribeIfAccountNotSubscribe();
+      await goToLoginPage(url, wasBlocked);
+      await connectAccountToTiktok();
+      streamWhileNonStop();
     } catch (e) {
-      log(e.toString());
       chromeDriverProcess.kill();
     }
   }
 
-  void StreamWhileNonStop() {
+  Future<void> goToLoginPage(String url, bool wasBlocked) async {
+    if (url.contains("redirect_url")) {
+      await loginForRedirect(wasBlocked);
+    } else {
+      var element = await driver
+          .findElement(const By.xpath("//*[@id=\"header-login-button\"]"));
+      await element.click();
+
+      var loginButtonInContainer = await driver.findElement(
+          By.xpath("//*[@id=\"loginContainer\"]/div/div/div/div[2]"));
+      await loginButtonInContainer.click();
+    }
+  }
+
+  Future<void> connectAccountToTiktok() async {
+    if (await ConnexionPageIsPresent(driver)) {
+      log("Ferme ta gueule");
+
+      await fillConnexionField();
+    } else {
+      log("My little dog");
+
+      await driver
+          .findElement(
+              By.xpath("//*[@id=\"loginContainer\"]/div/form/div[1]/a"))
+          .then((elem) async => await elem.click());
+
+      if (await WeAreOnPhoneAccountCreation(driver)) {
+        await driver
+            .findElement(
+                By.xpath("//*[@id=\"loginContainer\"]/div[2]/form/div[1]/a"))
+            .then((elem) async => await elem.click());
+      }
+      log("Passe mec");
+      await fillConnexionField();
+    }
+  }
+
+  Future<void> streamWhileNonStop() async {
     math.Random randomNumber = new math.Random();
 
     while (true) {
-      int trendToSearch = randomNumber.nextInt(0) + tikTokTrends.length - 1;
+      int trendToSearch = randomNumber.nextInt(1) + tikTokTrends.length - 1;
       int videoToSelect = randomNumber.nextInt(6);
       int waitBetweenNextVideo = randomNumber.nextInt(25);
       int numberVideoAfterNextSearch = randomNumber.nextInt(22) + 3;
 
-      driver
+      await driver
           .findElement(
               By.xpath("//*[@id=\"app-header\"]/div/div[2]/div/form/input"))
           .then((elem) => elem.sendKeys(tikTokTrends[trendToSearch]));
-      driver
+      await driver
           .findElement(
               By.xpath("//*[@id=\"app-header\"]/div/div[2]/div/form/button"))
           .then((elem) => elem.click()); // click on search
 
       sleep(Duration(milliseconds: 5000));
 
-      driver
+      await driver
           .findElement(By.xpath(
-              "//*[@id=\"tabs-0-panel-search_top\"]/div/div/div[{$videoToSelect}]/div[1]"))
+              "//*[@id=\"tabs-0-panel-search_top\"]/div/div/div[${videoToSelect}]/div[1]"))
           .then((elem) => elem.click());
-      StreamVideo();
+      streamVideo();
     }
   }
 
-  void StreamVideo() {
+  Future<void> streamVideo() async {
     math.Random randomNumber = new math.Random();
     //*[@id="main-content-video_detail"]/div/div[2]/div/div[1]/div[1]/div[3]/div[1]/button[2]
     int waitBetweenNextVideo = randomNumber.nextInt(45) + 15;
     int numberVideoAfterNextSearch = randomNumber.nextInt(20) + 3;
     int waitTime = randomNumber.nextInt(4) + 1;
     for (int i = 0; i < numberVideoAfterNextSearch; i++) {
-      sleep(Duration(milliseconds: 1500));
-
       sleep(Duration(seconds: waitBetweenNextVideo));
-      driver
+      await driver
           .findElement(By.xpath(
               "//*[@id=\"tabs-0-panel-search_top\"]/div[3]/div/div[1]/button[3]"))
           .then((e) => e.click()); // next video
@@ -183,10 +185,47 @@ class Streamer {
       }
       numberOfStream += 1;
     }
-    driver
+    await driver
         .findElement(By.xpath(
             "//*[@id=\"tabs-0-panel-search_top\"]/div[3]/div/div[1]/button[1]"))
         .then((e) => e.click());
+  }
+
+  Future<void> subscribeIfAccountNotSubscribe() async {
+    if (account.status == Status.unsubscribe) {
+      await driver
+          .findElement(By.xpath("//*[@id=\"login-modal\"]/div[1]/div[2]/a"))
+          .then((link) => link.click());
+      await driver
+          .findElement(By.xpath(
+              "//*[@id=\"loginContainer\"]/div[2]/div/div/div[2]/div[1]/div[2]"))
+          .then((link) => link.click());
+
+      await FillBirthDate(driver);
+      await SelectSubscriptionByEmail();
+
+      await driver
+          .findElement(By.xpath(
+              "//*[@id=\"loginContainer\"]/div[2]/form/div[5]/div/input"))
+          .then((element) => element.sendKeys(account.email));
+      await driver
+          .findElement(By.xpath(
+              "//*[@id=\"loginContainer\"]/div[2]/form/div[6]/div/input"))
+          .then((element) => element.sendKeys(account.password));
+      await driver
+          .findElement(By.xpath(
+              "//*[@id=\"loginContainer\"]/div[2]/form/div[7]/div/button"))
+          .then((element) => element.click());
+
+      await recupererLeCodeRecuParMail();
+      //Year
+
+      await driver
+          .findElement(By.xpath(
+              "//*[@id=\"main-content-video_detail\"]/div/div[2]/div/div[1]/div[1]/div[3]/div[1]/button[2]"))
+          .then((e) => e.click());
+      account.status = Status.subscribe;
+    }
   }
 
   Future<void> loginForRedirect(bool wasBlocked) async {
@@ -202,41 +241,51 @@ class Streamer {
     driver
         .findElement(const By.xpath(
             '//*[@id=\"loginContainer\"]/div[1]/form/div[1]/input'))
-        .then((element) => element.sendKeys(accountData.email));
+        .then((element) => element.sendKeys(account.email));
 
     driver
         .findElement(const By.xpath(
             '//*[@id=\"loginContainer\"]/div[1]/form/div[2]/div/input'))
-        .then((element) => element.sendKeys(accountData.password));
+        .then((element) => element.sendKeys(account.password));
     driver
         .findElement(By.xpath("//*[@id=\"loginContainer\"]/div[1]/form/button"))
         .then(
             (elem) => elem.click()); // Button to switch from email to telephone
-    WaitWhileCaptchaPresent(wasBlocked);
-    WaitWhileCodeVerificationIsPresent(wasBlocked);
+    waitWhileCaptchaPresent(wasBlocked);
+    waitWhileCodeVerificationIsPresent(wasBlocked);
     sleep(Duration(milliseconds: 1500));
     driver.get("https://www.tiktok.com/search");
   }
 
-  Future<void> FillConnexionField(WebDriver driver) async {
-    var wasBlocked = false;
-    var loginInput = await driver.findElement(
-        By.xpath("//*[@id=\"loginContainer\"]/div[2]/form/div[1]/input"));
-    await loginInput.sendKeys(accountData.email);
+  Future<void> fillConnexionField() async {
+    try {
+      sleep(Duration(milliseconds: 2500));
 
-    var passwordInput = await driver.findElement(
-        By.xpath("//*[@id=\"loginContainer\"]/div[2]/form/div[2]/div/input"));
-    await passwordInput.sendKeys(accountData.password);
+      var loginInput = await driver.findElement(
+          By.xpath("//*[@id=\"loginContainer\"]/div[2]/form/div[1]/input"));
 
-    var loginButton = await driver.findElement(
-        By.xpath("//*[@id=\"loginContainer\"]/div[2]/form/button"));
-    await loginButton.click();
+      await loginInput.sendKeys(account.email);
 
-    await WaitWhileCaptchaPresent(wasBlocked);
-    await WaitWhileCodeVerificationIsPresent(wasBlocked);
+      var passwordInput = await driver.findElement(
+          By.xpath("//*[@id=\"loginContainer\"]/div[2]/form/div[2]/div/input"));
+      await passwordInput.sendKeys(account.password);
+      log("Passwordmec");
+
+      var loginButton = await driver.findElement(
+          By.xpath("//*[@id=\"loginContainer\"]/div[2]/form/button"));
+      await loginButton.click();
+      log("LoginButtin");
+
+      await waitWhileCaptchaPresent(wasBlocked);
+      await waitWhileCodeVerificationIsPresent(wasBlocked);
+    } catch (Exception) {
+      log("Erreur mec");
+      log(Exception.toString());
+      sleep(Duration(hours: 1));
+    }
   }
 
-  Future<void> WaitWhileCaptchaPresent(bool wasBlocked) async {
+  Future<void> waitWhileCaptchaPresent(bool wasBlocked) async {
     while (await CaptchaIsAsked(driver)) {
       log("Sleep bro");
       browserStatus = browserStatus == BrowserStatus.Captcha
@@ -248,7 +297,7 @@ class Streamer {
     browserStatus = BrowserStatus.Running;
   }
 
-  Future<void> WaitWhileCodeVerificationIsPresent(bool wasBlocked) async {
+  Future<void> waitWhileCodeVerificationIsPresent(bool wasBlocked) async {
     while (await VerificationCodeIsAsked(driver)) {
       browserStatus = browserStatus == BrowserStatus.Captcha
           ? browserStatus
@@ -308,8 +357,58 @@ class Streamer {
     }
   }
 
+  Future<void> FillBirthDate(WebDriver _webDriver) async {
+    var monthOfBirth = math.Random().nextInt(11) + 1;
+    var dayOfBirth = math.Random().nextInt(29) + 1;
+    var yearOfBirth = math.Random().nextInt(45) + 20;
+
+    await _webDriver
+        .findElement(
+            By.xpath("//*[@id=\"loginContainer\"]/div[2]/form/div[2]/div[1]"))
+        .then((elem) => elem.click()); //Month
+    _webDriver
+        .findElement(
+            By.xpath("//*[@id=\"Month-options-item-${monthOfBirth}\"]"))
+        .then((elem) => elem.click()); //Month
+
+    sleep(Duration(milliseconds: 1500));
+    _webDriver
+        .findElement(
+            By.xpath("//*[@id=\"loginContainer\"]/div[2]/form/div[2]/div[2]"))
+        .then((elem) => elem.click()); //Day
+    _webDriver
+        .findElement(By.xpath("//*[@id=\"Day-options-item-${dayOfBirth}\"]"))
+        .then((elem) => elem.click()); //Day
+
+    _webDriver
+        .findElement(
+            By.xpath("//*[@id=\"loginContainer\"]/div[2]/form/div[2]/div[3]"))
+        .then((elem) => elem.click()); //Year
+    _webDriver
+        .findElement(By.xpath("//*[@id=\"Year-options-item-${yearOfBirth}\"]"))
+        .then((elem) => elem.click()); //Year
+  }
+
+  Future<void> SelectSubscriptionByEmail() async {
+    try {
+      await driver
+          .findElement(
+              By.xpath("//*[@id=\"loginContainer\"]/div/form/div[4]/a"))
+          .then((elem) => elem.click());
+      return;
+    } catch (Exception) {
+      return;
+    }
+  }
+
   @override
   String toString() {
-    return 'Streamer{accountData: $accountData, proxieData: $proxieData, numberOfStream: $numberOfStream, browserStatus: $browserStatus, accountIsSubscribed: $accountIsSubscribed, wasBlocked: $wasBlocked}';
+    return 'Streamer{accountData: $account, proxieData: $proxieData, numberOfStream: $numberOfStream, browserStatus: $browserStatus, accountIsSubscribed: ${account.status}, wasBlocked: $wasBlocked}';
+  }
+
+  Future<String> recupererLeCodeRecuParMail() async {
+    var code = await fetchInbox(account.email);
+    log(code.toString());
+    return code.body;
   }
 }

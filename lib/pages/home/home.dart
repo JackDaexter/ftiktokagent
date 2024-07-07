@@ -1,45 +1,35 @@
-import 'dart:convert';
-import 'dart:io';
+import 'dart:async';
+import 'dart:collection';
 import 'dart:developer';
+import 'dart:io';
 import 'dart:isolate';
-import 'package:flutter/material.dart';
-import 'package:my_app/pages/home/datagrid/datagrid.dart';
+import 'dart:math' as math;
+
 import 'package:file_picker/file_picker.dart';
-import 'package:my_app/models/domain/Account.dart';
+import 'package:flutter/material.dart';
 import 'package:my_app/models/domain/SimpleProxy.dart';
+import 'package:my_app/pages/home/datagrid/datagrid.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/Streamer.dart';
+import '../../main.dart';
 
 class HomePage extends StatefulWidget {
   HomePage({super.key});
-  final List<Account> accountsData = <Account>[];
-  final List<Streamer> streamerInstances = <Streamer>[];
 
   @override
-  State<StatefulWidget> createState() => HomePageStatefull(
-      accountsData: accountsData, streamerInstances: streamerInstances);
+  State<StatefulWidget> createState() => HomePageStatefull();
 }
 
 class HomePageStatefull extends State<HomePage> {
-  List<Account> accountsData;
-  List<Streamer> streamerInstances;
+  late void Function() updateChildState;
   List<SimpleProxy> proxiesData = <SimpleProxy>[];
   final List<Streamer> streamers = <Streamer>[];
+  final Map<Streamer, ReceivePort> receivePort = HashMap(); // Is a HashMap
+  Timer? timer;
 
-  HomePageStatefull(
-      {required this.accountsData, required this.streamerInstances});
-
-  accountCallback(List<Account> account) {
-    setState(() {
-      accountsData = account;
-    });
-  }
-
-  streamerCallback(List<Streamer> streamers) {
-    setState(() {
-      streamerInstances = streamers;
-    });
+  HomePageStatefull({Key? key}) {
+    loadProxyFromData();
   }
 
   @override
@@ -60,10 +50,11 @@ class HomePageStatefull extends State<HomePage> {
                     margin: EdgeInsets.only(left: 10.0, top: 5.0),
                     height: 600,
                     width: 800,
-                    child: AccountDatagrid(
-                      accountCallback: accountCallback,
-                      streamerCallback: streamerCallback,
-                    ),
+                    child: AccountDatagrid(parentCallBuilder:
+                        (BuildContext context,
+                            void Function() methodFromChild) {
+                      updateChildState = methodFromChild;
+                    }),
                   ),
                   SizedBox(width: 30), // give it width
                   Container(
@@ -175,8 +166,9 @@ class HomePageStatefull extends State<HomePage> {
         await prefs.setString('proxyFilePath', result.files.single.path!);
         await prefs.setString('proxyFileName', result.files.single.name);
         List<SimpleProxy> proxies = <SimpleProxy>[];
-
         List<String> lines = await file.readAsLines();
+        await prefs.setStringList('proxies', lines);
+
         for (String line in lines) {
           var ip = line.split(":")[0];
           var port = line.split(":")[1];
@@ -195,23 +187,62 @@ class HomePageStatefull extends State<HomePage> {
     }
   }
 
-  displayValue() {
-    log(accountsData.toString());
+  Future<void> loadProxyFromData() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    var lines = prefs.get('proxies') as List<dynamic>?;
+    if (lines != null) {
+      List<SimpleProxy> proxies = <SimpleProxy>[];
+      for (String line in lines) {
+        var ip = line.split(":")[0];
+        var port = line.split(":")[1];
+        proxies.add(new SimpleProxy(ip: ip, port: port));
+      }
+
+      setState(() {
+        proxiesData = proxies;
+      });
+    }
   }
 
   void _removeProxies() {
+    log("Removing proxies");
+
     setState(() {
       proxiesData = [];
     });
+    log(proxiesData.toString());
   }
 
   void _startStreaming() async {
-    var receivePort = new ReceivePort();
+    for (var streamer in MyAppInherited.of(context).streamerInstances) {
+      var proxy = getRandomProxy();
+      if (streamer.browserStatus == BrowserStatus.Inactive) {
+        receivePort[streamer] = ReceivePort();
+        await Isolate.spawn(
+            streamer.start, [receivePort[streamer]!.sendPort, proxy]);
+        receivePort[streamer]!.listen((message) {
+          Streamer strems = message as Streamer;
+          updateStreamerWithEmail(strems);
+        });
+      }
+    }
+  }
 
-    var accountData = this.accountsData.first;
-    log(accountData.toString());
-    var streamer = Streamer(account: accountData);
+  SimpleProxy? getRandomProxy() {
+    var random = new math.Random();
+    if (proxiesData.isEmpty) {
+      return null;
+    }
+    return proxiesData[random.nextInt(proxiesData.length)];
+  }
 
-    await Isolate.spawn(streamer.start, receivePort.sendPort);
+  void updateStreamerWithEmail(Streamer newStreamer) {
+    MyAppInherited.of(context).streamerInstances[MyAppInherited.of(context)
+        .streamerInstances
+        .indexWhere((element) =>
+            element.account.email == newStreamer.account.email)] = newStreamer;
+
+    updateChildState.call();
   }
 }

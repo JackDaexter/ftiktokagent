@@ -3,6 +3,8 @@ import 'dart:io';
 import 'dart:isolate';
 import 'dart:math' as math;
 
+import 'package:my_app/core/find_in_page.dart';
+import 'package:my_app/core/select_in_page.dart';
 import 'package:my_app/models/domain/Account.dart';
 import 'package:my_app/models/domain/SimpleProxy.dart';
 import 'package:webdriver/async_io.dart';
@@ -57,51 +59,104 @@ class Streamer {
   var numberOfStream = 0;
   var browserStatus = BrowserStatus.Inactive;
   var wasBlocked = false;
+  SendPort? sendPort;
 
   Streamer({required this.account, proxieData, driver})
       : this.proxieData = proxieData;
 
-  Future<void> browserSetup() async {
-    driver = await createDriver(
-        uri: Uri.parse('http://localhost:4444/wd/hub/'),
-        desired: {
-          'browserName': 'chrome',
-          'goog:chromeOptions': {
-            'args': [
-              '--disable-gpu',
-              '--no-sandbox',
-              '--disable-extensions',
-              '--disable-popup-blocking',
-              '--mute-audio'
-            ]
-          }
-        });
+  Streamer.streamed(
+      {required this.account,
+      this.proxieData,
+      required this.numberOfStream,
+      required this.browserStatus,
+      wasBlocked,
+      driver});
+
+  Future<void> browserSetup(SimpleProxy? proxieData) async {
+    if (proxieData == null) {
+      driver = await createDriver(
+          uri: Uri.parse('http://localhost:4444/wd/hub/'),
+          desired: {
+            'browserName': 'chrome',
+            'goog:chromeOptions': {
+              'args': [
+                '--disable-gpu',
+                '--no-sandbox',
+                '--disable-extensions',
+                '--disable-popup-blocking',
+                '--mute-audio'
+              ]
+            }
+          });
+      await driver.timeouts.setImplicitTimeout(const Duration(seconds: 10));
+      return;
+    } else {
+      driver = await createDriver(
+          uri: Uri.parse('http://localhost:4444/wd/hub/'),
+          desired: {
+            'browserName': 'chrome',
+            'proxy': {
+              'proxyType': 'manual',
+              'httpProxy': "${proxieData.ip}:${proxieData.port}",
+              'sslProxy': "${proxieData.ip}:${proxieData.port}",
+            },
+            'goog:chromeOptions': {
+              'args': [
+                '--disable-gpu',
+                '--no-sandbox',
+                '--disable-extensions',
+                '--disable-popup-blocking',
+                '--mute-audio'
+              ]
+            }
+          });
+    }
+
+    await driver.timeouts.setImplicitTimeout(const Duration(seconds: 10));
   }
 
-  void start(SendPort sendport) async {
+  static Streamer clone(Account account, SimpleProxy? simpleProxy,
+      int numberOfStream, BrowserStatus browserStatus) {
+    return new Streamer.streamed(
+        account: account,
+        proxieData: simpleProxy,
+        numberOfStream: numberOfStream,
+        browserStatus: browserStatus);
+  }
+
+  void start(List<dynamic> arguments) async {
     Process chromeDriverProcess = await Process.start(
         'C:\\Users\\franc\\IdeaProjects\\ftiktokagent\\lib\\core\\chromedriver.exe',
         ['--port=4444', '--url-base=wd/hub']);
     bool wasBlocked = false;
+    sendPort = arguments[0] as SendPort;
 
     try {
-      await browserSetup();
+      SimpleProxy? proxieData = arguments[1] as SimpleProxy?;
+      await browserSetup(proxieData);
       browserStatus = BrowserStatus.Running;
+      var clone =
+          Streamer.clone(account, proxieData, numberOfStream, browserStatus);
+      sendPort!.send(clone);
 
-      await driver.timeouts.setImplicitTimeout(const Duration(seconds: 10));
       await driver.get('https://www.tiktok.com');
+      sleep(Duration(milliseconds: 2500));
+      await SelectInPage.refusedCookieAsked(driver);
 
-      var url = driver.currentUrl.toString();
-      await subscribeIfAccountNotSubscribe();
-      await goToLoginPage(url, wasBlocked);
+      await goToSubscribeIfAccountNotSubscribe();
+      await goToLoginPage(wasBlocked);
       await connectAccountToTiktok();
-      streamWhileNonStop();
+      await streamWhileNonStop();
     } catch (e) {
       chromeDriverProcess.kill();
+      log(e.toString());
+      sendStreamingInformation();
     }
   }
 
-  Future<void> goToLoginPage(String url, bool wasBlocked) async {
+  Future<void> goToLoginPage(bool wasBlocked) async {
+    var url = driver.currentUrl.toString();
+
     if (url.contains("redirect_url")) {
       await loginForRedirect(wasBlocked);
     } else {
@@ -110,110 +165,118 @@ class Streamer {
       await element.click();
 
       var loginButtonInContainer = await driver.findElement(
-          By.xpath("//*[@id=\"loginContainer\"]/div/div/div/div[2]"));
+          const By.xpath("//*[@id=\"loginContainer\"]/div/div/div/div[2]"));
       await loginButtonInContainer.click();
     }
   }
 
   Future<void> connectAccountToTiktok() async {
-    if (await ConnexionPageIsPresent(driver)) {
-      log("Ferme ta gueule");
-
+    if (await FindInPage.connexionPageIsPresent(driver)) {
       await fillConnexionField();
     } else {
-      log("My little dog");
-
       await driver
           .findElement(
               By.xpath("//*[@id=\"loginContainer\"]/div/form/div[1]/a"))
           .then((elem) async => await elem.click());
 
-      if (await WeAreOnPhoneAccountCreation(driver)) {
+      if (await FindInPage.weAreOnPhoneAccountCreation(driver)) {
         await driver
             .findElement(
                 By.xpath("//*[@id=\"loginContainer\"]/div[2]/form/div[1]/a"))
             .then((elem) async => await elem.click());
       }
-      log("Passe mec");
       await fillConnexionField();
     }
   }
 
   Future<void> streamWhileNonStop() async {
-    math.Random randomNumber = new math.Random();
+    math.Random randomNumber = math.Random();
 
     while (true) {
       int trendToSearch = randomNumber.nextInt(1) + tikTokTrends.length - 1;
-      int videoToSelect = randomNumber.nextInt(6);
-      int waitBetweenNextVideo = randomNumber.nextInt(25);
-      int numberVideoAfterNextSearch = randomNumber.nextInt(22) + 3;
+      int videoToSelect = randomNumber.nextInt(6) + 1;
+      await searchVideoOnSearchbar(trendToSearch);
+      log("Video to Select $videoToSelect");
 
-      await driver
-          .findElement(
-              By.xpath("//*[@id=\"app-header\"]/div/div[2]/div/form/input"))
-          .then((elem) => elem.sendKeys(tikTokTrends[trendToSearch]));
-      await driver
-          .findElement(
-              By.xpath("//*[@id=\"app-header\"]/div/div[2]/div/form/button"))
-          .then((elem) => elem.click()); // click on search
+      await waitWhileCaptchaPresentWhileStreaming(wasBlocked);
 
-      sleep(Duration(milliseconds: 5000));
+      sleep(const Duration(milliseconds: 5000));
 
-      await driver
-          .findElement(By.xpath(
-              "//*[@id=\"tabs-0-panel-search_top\"]/div/div/div[${videoToSelect}]/div[1]"))
-          .then((elem) => elem.click());
-      streamVideo();
+      await SelectInPage.selectAVideo(driver, videoToSelect);
+      await waitWhileCaptchaPresentWhileConnecting(wasBlocked);
+      await waitWhileCodeVerificationIsPresent(wasBlocked);
+      await streamVideo();
     }
+  }
+
+  Future<void> searchVideoOnSearchbar(int trendToSearch) async {
+    await driver
+        .findElement(
+            const By.xpath("//*[@id=\"app-header\"]/div/div[2]/div/form/input"))
+        .then((elem) => elem.sendKeys(tikTokTrends[trendToSearch]));
+    await driver
+        .findElement(const By.xpath(
+            "//*[@id=\"app-header\"]/div/div[2]/div/form/button"))
+        .then((elem) => elem.click());
   }
 
   Future<void> streamVideo() async {
-    math.Random randomNumber = new math.Random();
-    //*[@id="main-content-video_detail"]/div/div[2]/div/div[1]/div[1]/div[3]/div[1]/button[2]
-    int waitBetweenNextVideo = randomNumber.nextInt(45) + 15;
-    int numberVideoAfterNextSearch = randomNumber.nextInt(20) + 3;
-    int waitTime = randomNumber.nextInt(4) + 1;
-    for (int i = 0; i < numberVideoAfterNextSearch; i++) {
-      sleep(Duration(seconds: waitBetweenNextVideo));
-      await driver
-          .findElement(By.xpath(
-              "//*[@id=\"tabs-0-panel-search_top\"]/div[3]/div/div[1]/button[3]"))
-          .then((e) => e.click()); // next video
+    math.Random randomNumber = math.Random();
+    int waitBetweenNextVideo = randomNumber.nextInt(30) + 5;
+    int numberOfVideoToWatch = randomNumber.nextInt(2) + 3;
 
-      if (i % numberVideoAfterNextSearch == 0) {
-        sleep(Duration(minutes: waitTime));
-      }
+    for (int i = 0; i < numberOfVideoToWatch; i++) {
+      sleep(Duration(seconds: waitBetweenNextVideo));
+      await waitWhileCaptchaPresentWhileStreaming(wasBlocked);
+      await waitWhileCodeVerificationIsPresent(wasBlocked);
+
+      await driver
+          .findElement(const By.xpath(
+              "//*[@id=\"tabs-0-panel-search_top\"]/div[3]/div/div[1]/button[3]"))
+          .then((e) => e.click())
+          .then((e) => log("J'ai cliqué poto")); // next video
+
+      log("Await driver");
+      await waitWhileCaptchaPresentWhileStreaming(wasBlocked);
+      await waitWhileCodeVerificationIsPresent(wasBlocked);
+      log("Finished waiting for captacha");
+
       numberOfStream += 1;
+      sendStreamingInformation();
     }
+    log("Go out");
     await driver
-        .findElement(By.xpath(
+        .findElement(const By.xpath(
             "//*[@id=\"tabs-0-panel-search_top\"]/div[3]/div/div[1]/button[1]"))
         .then((e) => e.click());
+    await waitWhileCaptchaPresentWhileStreaming(wasBlocked);
+    await waitWhileCodeVerificationIsPresent(wasBlocked);
   }
 
-  Future<void> subscribeIfAccountNotSubscribe() async {
+  Future<void> goToSubscribeIfAccountNotSubscribe() async {
     if (account.status == Status.unsubscribe) {
       await driver
-          .findElement(By.xpath("//*[@id=\"login-modal\"]/div[1]/div[2]/a"))
+          .findElement(
+              const By.xpath("//*[@id=\"login-modal\"]/div[1]/div[2]/a"))
           .then((link) => link.click());
       await driver
-          .findElement(By.xpath(
+          .findElement(const By.xpath(
               "//*[@id=\"loginContainer\"]/div[2]/div/div/div[2]/div[1]/div[2]"))
           .then((link) => link.click());
 
-      await FillBirthDate(driver);
-      await SelectSubscriptionByEmail();
+      await fillBirthDateFields(driver);
+      await SelectInPage.selectSubscriptionByEmail(driver);
 
       await driver
-          .findElement(By.xpath(
+          .findElement(const By.xpath(
               "//*[@id=\"loginContainer\"]/div[2]/form/div[5]/div/input"))
           .then((element) => element.sendKeys(account.email));
       await driver
-          .findElement(By.xpath(
+          .findElement(const By.xpath(
               "//*[@id=\"loginContainer\"]/div[2]/form/div[6]/div/input"))
           .then((element) => element.sendKeys(account.password));
       await driver
-          .findElement(By.xpath(
+          .findElement(const By.xpath(
               "//*[@id=\"loginContainer\"]/div[2]/form/div[7]/div/button"))
           .then((element) => element.click());
 
@@ -221,7 +284,7 @@ class Streamer {
       //Year
 
       await driver
-          .findElement(By.xpath(
+          .findElement(const By.xpath(
               "//*[@id=\"main-content-video_detail\"]/div/div[2]/div/div[1]/div[1]/div[3]/div[1]/button[2]"))
           .then((e) => e.click());
       account.status = Status.subscribe;
@@ -251,9 +314,9 @@ class Streamer {
         .findElement(By.xpath("//*[@id=\"loginContainer\"]/div[1]/form/button"))
         .then(
             (elem) => elem.click()); // Button to switch from email to telephone
-    waitWhileCaptchaPresent(wasBlocked);
+    waitWhileCaptchaPresentWhileConnecting(wasBlocked);
     waitWhileCodeVerificationIsPresent(wasBlocked);
-    sleep(Duration(milliseconds: 1500));
+    sleep(const Duration(milliseconds: 1500));
     driver.get("https://www.tiktok.com/search");
   }
 
@@ -261,103 +324,81 @@ class Streamer {
     try {
       sleep(Duration(milliseconds: 2500));
 
-      var loginInput = await driver.findElement(
-          By.xpath("//*[@id=\"loginContainer\"]/div[2]/form/div[1]/input"));
+      var loginInput = await driver.findElement(const By.xpath(
+          "//*[@id=\"loginContainer\"]/div[2]/form/div[1]/input"));
 
       await loginInput.sendKeys(account.email);
 
-      var passwordInput = await driver.findElement(
-          By.xpath("//*[@id=\"loginContainer\"]/div[2]/form/div[2]/div/input"));
+      var passwordInput = await driver.findElement(const By.xpath(
+          "//*[@id=\"loginContainer\"]/div[2]/form/div[2]/div/input"));
       await passwordInput.sendKeys(account.password);
       log("Passwordmec");
 
       var loginButton = await driver.findElement(
-          By.xpath("//*[@id=\"loginContainer\"]/div[2]/form/button"));
+          const By.xpath("//*[@id=\"loginContainer\"]/div[2]/form/button"));
       await loginButton.click();
       log("LoginButtin");
 
-      await waitWhileCaptchaPresent(wasBlocked);
+      await waitWhileCaptchaPresentWhileConnecting(wasBlocked);
       await waitWhileCodeVerificationIsPresent(wasBlocked);
-    } catch (Exception) {
-      log("Erreur mec");
-      log(Exception.toString());
-      sleep(Duration(hours: 1));
+    } on Exception {
+      log("Exception");
     }
   }
 
-  Future<void> waitWhileCaptchaPresent(bool wasBlocked) async {
-    while (await CaptchaIsAsked(driver)) {
-      log("Sleep bro");
-      browserStatus = browserStatus == BrowserStatus.Captcha
-          ? browserStatus
-          : BrowserStatus.Captcha;
-      sleep(Duration(milliseconds: 1500));
+  Future<void> waitWhileCaptchaPresentWhileConnecting(bool wasBlocked) async {
+    while (await FindInPage.captchaIsAskedWhileConnecting(driver)) {
+      browserStatus = BrowserStatus.Captcha;
+      if (!wasBlocked) {
+        sendStreamingInformation();
+      }
+      sleep(const Duration(milliseconds: 1500));
       wasBlocked = true;
     }
-    browserStatus = BrowserStatus.Running;
+    if (wasBlocked) {
+      browserStatus = BrowserStatus.Running;
+      sendStreamingInformation();
+    }
+
+    wasBlocked = false;
+  }
+
+  Future<void> waitWhileCaptchaPresentWhileStreaming(bool wasBlocked) async {
+    while (await FindInPage.captchaIsAskedWhileStreaming(driver)) {
+      browserStatus = BrowserStatus.Captcha;
+      if (!wasBlocked) {
+        sendStreamingInformation();
+      }
+      sleep(const Duration(milliseconds: 1500));
+      wasBlocked = true;
+      log("waitWhileCaptchaPresentWhileStreaming");
+    }
+    if (wasBlocked) {
+      browserStatus = BrowserStatus.Running;
+      sendStreamingInformation();
+    }
+
+    wasBlocked = false;
   }
 
   Future<void> waitWhileCodeVerificationIsPresent(bool wasBlocked) async {
-    while (await VerificationCodeIsAsked(driver)) {
-      browserStatus = browserStatus == BrowserStatus.Captcha
-          ? browserStatus
-          : BrowserStatus.Code;
-      sleep(Duration(milliseconds: 1500));
+    while (await FindInPage.verificationCodeIsAsked(driver)) {
+      browserStatus = BrowserStatus.Captcha;
+      if (!wasBlocked) {
+        sendStreamingInformation();
+      }
+      sleep(const Duration(milliseconds: 1500));
       wasBlocked = true;
     }
-    browserStatus = BrowserStatus.Running;
-  }
-
-  static Future<bool> CaptchaIsAsked(WebDriver driver) async {
-    try {
-      await driver.findElement(By.xpath("//*[@id=\"captcha_container\"]/div"));
-      return true;
-    } catch (Exception) {
-      return false;
+    if (wasBlocked) {
+      log("Verification Was blocked");
+      wasBlocked = false;
+      browserStatus = BrowserStatus.Running;
+      sendStreamingInformation();
     }
   }
 
-  static Future<bool> ConnexionPageIsPresent(WebDriver driver) async {
-    try {
-      var isPresent = await driver
-          .findElement(By.xpath("//*[@id=\"loginContainer\"]/div[2]/div"));
-      log(isPresent.toString());
-      return true;
-    } catch (Exception) {
-      return false;
-    }
-  }
-
-  static Future<bool> WeAreOnPhoneAccountCreation(WebDriver driver) async {
-    try {
-      await driver.findElement(
-          By.xpath("//*[@id=\"loginContainer\"]/div[2]/form/div[1]/a"));
-      return true;
-    } catch (Exception) {
-      return false;
-    }
-  }
-
-  static Future<bool> VerificationCodeIsAsked(WebDriver driver) async {
-    try {
-      await driver.findElement(By.xpath("/html/body/div[9]/div[2]"));
-      return true;
-    } catch (Exception) {
-      return false;
-    }
-  }
-
-  static Future<bool> SubscribeLinkIsPresent(WebDriver driver) async {
-    try {
-      await driver
-          .findElement(By.xpath("//*[@id=\"login-modal\"]/div[1]/div[3]/a"));
-      return true;
-    } catch (Exception) {
-      return false;
-    }
-  }
-
-  Future<void> FillBirthDate(WebDriver _webDriver) async {
+  Future<void> fillBirthDateFields(WebDriver _webDriver) async {
     var monthOfBirth = math.Random().nextInt(11) + 1;
     var dayOfBirth = math.Random().nextInt(29) + 1;
     var yearOfBirth = math.Random().nextInt(45) + 20;
@@ -389,18 +430,6 @@ class Streamer {
         .then((elem) => elem.click()); //Year
   }
 
-  Future<void> SelectSubscriptionByEmail() async {
-    try {
-      await driver
-          .findElement(
-              By.xpath("//*[@id=\"loginContainer\"]/div/form/div[4]/a"))
-          .then((elem) => elem.click());
-      return;
-    } catch (Exception) {
-      return;
-    }
-  }
-
   @override
   String toString() {
     return 'Streamer{accountData: $account, proxieData: $proxieData, numberOfStream: $numberOfStream, browserStatus: $browserStatus, accountIsSubscribed: ${account.status}, wasBlocked: $wasBlocked}';
@@ -410,5 +439,11 @@ class Streamer {
     var code = await fetchInbox(account.email);
     log(code.toString());
     return code.body;
+  }
+
+  void sendStreamingInformation() {
+    var clone =
+        Streamer.clone(account, proxieData, numberOfStream, browserStatus);
+    sendPort!.send(clone);
   }
 }

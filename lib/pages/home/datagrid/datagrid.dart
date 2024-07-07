@@ -3,34 +3,37 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:my_app/components/alert_dialog.dart';
 import 'package:my_app/components/custom_dialog.dart';
+import 'package:my_app/main.dart';
 import 'package:my_app/models/infrastructure/AccountFileAdapter.dart';
 import 'package:my_app/usecases/CreateRandomGmailAccount.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 
 import '../../../core/Streamer.dart';
 import '../../../models/domain/Account.dart';
+import '../../../models/domain/SimpleProxy.dart';
 import '../../../models/mapping/AccountDataSource.dart';
 import '../../../models/mapping/PaginatedStreamingDataSource.dart';
 import '../../../models/mapping/StreamingDataSource.dart';
-import 'datagrid_top_button.dart';
+import 'datagrid_top_buttons.dart';
+
+typedef MyBuilder = void Function(
+    BuildContext context, void Function() methodFromChild);
+void main() => runApp(MyApp());
 
 class AccountDatagrid extends StatefulWidget {
-  Function accountCallback;
-  Function streamerCallback;
+  final MyBuilder parentCallBuilder;
 
-  AccountDatagrid(
-      {super.key,
-      required this.accountCallback,
-      required this.streamerCallback});
+  AccountDatagrid({
+    super.key,
+    required this.parentCallBuilder,
+  });
 
   @override
   State<AccountDatagrid> createState() => _AccountDatagridState();
 }
 
 class _AccountDatagridState extends State<AccountDatagrid> {
-  List<Account> accountsData = <Account>[];
-  List<Streamer> streamerInstances = <Streamer>[];
-
   late AccountDataSource accountDataSource = AccountDataSource(accountData: []);
   late PaginatedStreamingDataGridSource streamingDataSource =
       PaginatedStreamingDataGridSource(streamingData: []);
@@ -63,86 +66,84 @@ class _AccountDatagridState extends State<AccountDatagrid> {
       return;
     }
     setState(() {
-      accountsData = accounts;
-      widget.accountCallback(accounts);
-      accountDataSource = AccountDataSource(accountData: accountsData);
-      streamingDataSource =
-          PaginatedStreamingDataGridSource(streamingData: streamerInstances);
+      MyAppInherited.of(context).accounts.addAll(accounts);
+      accountDataSource = AccountDataSource(accountData: accounts);
+      /*streamingDataSource =
+          PaginatedStreamingDataGridSource(streamingData: streamerInstances);*/
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    widget.parentCallBuilder.call(context, updateDataSources);
     return Material(
         borderRadius: BorderRadius.circular(10.0),
         elevation: 5.0,
         child: Container(
           padding: EdgeInsets.only(top: 10.0, left: 10.0, right: 10.0),
           child: Column(children: [
-            Container(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Container(
-                      height: 25,
-                      margin: const EdgeInsets.only(left: 20.0, right: 0.0),
-                      child: OutlinedButton(
-                          onPressed:
-                              _importAccountFromFile, // null disables the button
-                          child: Row(children: [
-                            Icon(
-                              Icons.file_download,
-                              size: 13.0,
-                            ),
-                            SizedBox(width: 5),
-                            Text(
-                              "Importer des comptes",
-                              style: TextStyle(fontSize: 12.0),
-                            )
-                          ]) // null disables the button
-                          )),
-                  Spacer(), // use Spacer
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Container(
+                    height: 25,
+                    margin: const EdgeInsets.only(left: 20.0, right: 0.0),
+                    child: OutlinedButton(
+                        onPressed:
+                            _importAccountFromFile, // null disables the button
+                        child: Row(children: [
+                          Icon(
+                            Icons.file_download,
+                            size: 13.0,
+                          ),
+                          SizedBox(width: 5),
+                          Text(
+                            "Importer des comptes",
+                            style: TextStyle(fontSize: 12.0),
+                          )
+                        ]) // null disables the button
+                        )),
+                Spacer(), // use Spacer
 
-                  Container(
-                      height: 25,
-                      margin: const EdgeInsets.only(left: 20.0, right: 0.0),
-                      child: OutlinedButton(
-                          onPressed:
-                              _activateAccountAdding, // null disables the button
-                          child: Row(children: [
-                            Icon(
-                              Icons.add,
-                              size: 16.0,
-                            ),
-                            SizedBox(width: 5),
-                            Text(
-                              "Ajouter un compte",
-                              style: TextStyle(fontSize: 12.0),
-                            )
-                          ]) // null disables the button
-                          )),
-                  Spacer(), // use Spacer
+                Container(
+                    height: 25,
+                    margin: const EdgeInsets.only(left: 20.0, right: 0.0),
+                    child: OutlinedButton(
+                        onPressed:
+                            _activateAccountAdding, // null disables the button
+                        child: Row(children: [
+                          Icon(
+                            Icons.add,
+                            size: 16.0,
+                          ),
+                          SizedBox(width: 5),
+                          Text(
+                            "Ajouter un compte",
+                            style: TextStyle(fontSize: 12.0),
+                          )
+                        ]) // null disables the button
+                        )),
+                Spacer(), // use Spacer
 
-                  Container(
-                      height: 25,
-                      margin: const EdgeInsets.only(left: 20.0, right: 0.0),
-                      child: OutlinedButton(
-                          onPressed:
-                              generateRandomGmailAccount, // null disables the button
-                          child: Row(children: [
-                            Icon(
-                              Icons.generating_tokens,
-                              size: 16.0,
-                            ),
-                            SizedBox(width: 5),
-                            Text(
-                              "Générer des comptes",
-                              style: TextStyle(fontSize: 12.0),
-                            )
-                          ]) // null disables the button
-                          ))
-                ],
-              ),
+                Container(
+                    height: 25,
+                    margin: const EdgeInsets.only(left: 20.0, right: 0.0),
+                    child: OutlinedButton(
+                        onPressed:
+                            generateRandomGmailAccount, // null disables the button
+                        child: Row(children: [
+                          Icon(
+                            Icons.generating_tokens,
+                            size: 16.0,
+                          ),
+                          SizedBox(width: 5),
+                          Text(
+                            "Générer des comptes",
+                            style: TextStyle(fontSize: 12.0),
+                          )
+                        ]) // null disables the button
+                        ))
+              ],
             ),
 
             const SizedBox(height: 10), // give it width
@@ -154,6 +155,7 @@ class _AccountDatagridState extends State<AccountDatagrid> {
                   selectionMode: SelectionMode.single,
                   source: streamingDataSource,
                   allowPullToRefresh: true,
+                  allowSorting: true,
                   controller: dataGridController,
                   columnWidthMode: ColumnWidthMode.fill,
                   columns: <GridColumn>[
@@ -279,7 +281,7 @@ class _AccountDatagridState extends State<AccountDatagrid> {
                     : new Container(
                         margin: EdgeInsets.only(top: 60),
                       )),
-            (streamerInstances.isNotEmpty
+            (getInheritedStreamerInstances().isNotEmpty
                 ? Container(
                     alignment: Alignment.center,
                     height: 40,
@@ -287,7 +289,8 @@ class _AccountDatagridState extends State<AccountDatagrid> {
                     child: SfDataPager(
                       itemWidth: 10,
                       itemHeight: 5,
-                      pageCount: streamerInstances.length / rowsPerPage,
+                      pageCount:
+                          getInheritedStreamerInstances().length / rowsPerPage,
                       visibleItemsCount: 0,
                       delegate: streamingDataSource,
                     ),
@@ -371,26 +374,22 @@ class _AccountDatagridState extends State<AccountDatagrid> {
     var username = usernameController.text;
     var email = emailController.text;
     var password = passwordController.text;
-    accountsData.add(Account(
+
+    var newAccount = Account(
         email: email,
         username: username,
         password: password,
-        status: Status.subscribe));
-    widget.accountCallback(accountsData);
-    accountDataSource = AccountDataSource(accountData: accountsData);
-    setState(() {
-      streamerInstances.add(new Streamer(
-          account: Account(
-              email: email,
-              username: username,
-              password: password,
-              status: Status.subscribe)));
-      log(streamerInstances.toString());
-      widget.streamerCallback(streamerInstances);
+        status: Status.subscribe);
+    updateAccountStatesByAddingItem(newAccount);
 
-      streamingDataSource =
-          PaginatedStreamingDataGridSource(streamingData: streamerInstances);
-    });
+    var newStreamerInstance = new Streamer(
+        account: Account(
+            email: email,
+            username: username,
+            password: password,
+            status: Status.subscribe));
+    updateStreamerStatesByAddingItem(newStreamerInstance);
+
     _deactivateAccountAdding();
     cleanControllers();
   }
@@ -417,16 +416,24 @@ class _AccountDatagridState extends State<AccountDatagrid> {
     if (dataGridController.selectedIndex != -1) {
       var indexSelectedAccount = dataGridController.selectedIndex;
 
-      accountsData.removeAt(indexSelectedAccount);
-      streamerInstances.removeAt(indexSelectedAccount);
+      getInheritedStreamerInstances().removeAt(indexSelectedAccount);
+      getInheritedAccounts().removeAt(indexSelectedAccount);
 
-      widget.accountCallback(accountsData);
-      accountDataSource = AccountDataSource(accountData: accountsData);
-
-      widget.streamerCallback(streamerInstances);
-      streamingDataSource =
-          PaginatedStreamingDataGridSource(streamingData: streamerInstances);
+      setState(() {
+        streamingDataSource = PaginatedStreamingDataGridSource(
+            streamingData: getInheritedStreamerInstances());
+        accountDataSource =
+            AccountDataSource(accountData: getInheritedAccounts());
+      });
     }
+  }
+
+  List<Streamer> getInheritedStreamerInstances() {
+    return MyAppInherited.of(context).streamerInstances;
+  }
+
+  List<Account> getInheritedAccounts() {
+    return MyAppInherited.of(context).accounts;
   }
 
   Future<void> loadAccountsFromPreviousSession() async {
@@ -441,14 +448,14 @@ class _AccountDatagridState extends State<AccountDatagrid> {
   }
 
   Future<void> onSaveAccountUpdate() async {
-    var status = await accountFileAdapter.saveMultipleAccounts(accountsData);
-    log('Status: $status');
+    var status =
+        await accountFileAdapter.saveMultipleAccounts(getInheritedAccounts());
     String message = status ? "Sauvegarde réussie" : "Echec de la sauvegarde";
     await CustomDialog(context, "Status de la sauvegarde", message);
   }
 
   Future<void> saveAccountUpdateInLocalStorage() async {
-    await accountFileAdapter.saveMultipleAccounts(accountsData);
+    await accountFileAdapter.saveMultipleAccounts(getInheritedAccounts());
   }
 
   Future<void> generateRandomGmailAccount() async {
@@ -465,8 +472,9 @@ class _AccountDatagridState extends State<AccountDatagrid> {
           status: Status.unsubscribe));
       streamers.add(new Streamer(account: accounts.last));
     }
-    streamers.addAll(streamerInstances);
-    accounts.addAll(accountsData);
+
+    getInheritedStreamerInstances().addAll(streamers);
+    getInheritedAccounts().addAll(accounts);
 
     updateAccountStates(accounts);
     updateStreamerStates(streamers);
@@ -475,19 +483,38 @@ class _AccountDatagridState extends State<AccountDatagrid> {
   void loadStreamerInstancesFromAccount() {
     List<Streamer> streamers = [];
 
-    for (var account in accountsData) {
+    for (var account in MyAppInherited.of(context).accounts) {
       streamers.add(new Streamer(account: account));
     }
     updateStreamerStates(streamers);
   }
 
+  void updateAccountStatesByAddingItem(Account accounts) {
+    if (accounts != null) {
+      setState(() {
+        MyAppInherited.of(context).accounts.add(accounts);
+        accountDataSource =
+            AccountDataSource(accountData: MyAppInherited.of(context).accounts);
+      });
+    }
+  }
+
+  void updateStreamerStatesByAddingItem(Streamer streamers) {
+    if (streamers != null) {
+      setState(() {
+        MyAppInherited.of(context).streamerInstances.add(streamers);
+        streamingDataSource = PaginatedStreamingDataGridSource(
+            streamingData: MyAppInherited.of(context).streamerInstances);
+      });
+    }
+  }
+
   void updateStreamerStates(List<Streamer>? streamers) {
     if (streamers != null) {
       setState(() {
-        widget.streamerCallback(streamers);
-        streamerInstances = streamers;
-        streamingDataSource =
-            PaginatedStreamingDataGridSource(streamingData: streamerInstances);
+        MyAppInherited.of(context).streamerInstances = streamers;
+        streamingDataSource = PaginatedStreamingDataGridSource(
+            streamingData: MyAppInherited.of(context).streamerInstances);
       });
     }
   }
@@ -495,10 +522,21 @@ class _AccountDatagridState extends State<AccountDatagrid> {
   void updateAccountStates(List<Account>? accounts) {
     if (accounts != null) {
       setState(() {
-        accountsData = accounts;
-        widget.accountCallback(accounts);
-        accountDataSource = AccountDataSource(accountData: accountsData);
+        MyAppInherited.of(context).accounts = accounts;
+        accountDataSource =
+            AccountDataSource(accountData: MyAppInherited.of(context).accounts);
       });
     }
+  }
+
+  void updateDataSources() {
+    log("updateDataSources");
+    log(getInheritedStreamerInstances().toString());
+    setState(() {
+      streamingDataSource = PaginatedStreamingDataGridSource(
+          streamingData: getInheritedStreamerInstances());
+      accountDataSource =
+          AccountDataSource(accountData: getInheritedAccounts());
+    });
   }
 }

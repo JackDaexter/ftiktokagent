@@ -33,6 +33,16 @@ class PaginatedStreamingDataGridSource extends DataGridSource {
   @override
   List<DataGridRow> get rows => _streamingData;
 
+  MaterialColor getAppropriateColor(String status) {
+    if (status == 'Inactive') {
+      return Colors.red;
+    } else if (status == 'Captcha') {
+      return Colors.orange;
+    } else {
+      return Colors.green;
+    }
+  }
+
   @override
   DataGridRowAdapter? buildRow(DataGridRow row) {
     return DataGridRowAdapter(
@@ -42,12 +52,11 @@ class PaginatedStreamingDataGridSource extends DataGridSource {
           alignment: Alignment.center,
           padding: const EdgeInsets.all(8.0),
           child: Chip(
-            avatar: Icon(Icons.circle,
-                color: dataCell.value == 'BrowserStatus.active'
-                    ? Colors.green
-                    : Colors.red),
+            avatar:
+                Icon(Icons.circle, color: getAppropriateColor(dataCell.value)),
             label: Text(dataCell.value.toString(),
-                style: const TextStyle(fontSize: 14.0, fontWeight: FontWeight.w400)),
+                style: const TextStyle(
+                    fontSize: 14.0, fontWeight: FontWeight.w400)),
           ),
         );
       }

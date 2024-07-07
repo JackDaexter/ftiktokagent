@@ -7,7 +7,8 @@ import 'package:my_app/pages/home/home.dart';
 import 'core/Streamer.dart';
 import 'models/domain/Account.dart';
 
-void main() {
+void main() async {
+
   runApp(const MyApp());
 }
 

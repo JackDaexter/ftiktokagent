@@ -1,0 +1,52 @@
+name: Dart Release Workflow
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1.2
+
+      - name: Run Tests
+        run: dart test
+
+      - name: Generate Release
+        run: dart run build_runner build --release
+
+      - name: Create Tag
+        uses: actions/github-script@v5
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const tagName = `v${new Date().toISOString().split('T')[0]}`;
+            github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `refs/tags/${tagName}`,
+              sha: context.sha
+            });
+            return tagName;
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.create_tag.outputs.tag_name }}
+          name: Release ${{ steps.create_tag.outputs.tag_name }}
+          draft: false
+          prerelease: false
+          files: |
+            build/*
+
+      - name: Output Release URL
+        run: |
+          echo "Release URL: ${{ steps.create_release.outputs.upload_url }}"

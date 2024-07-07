@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:my_app/models/domain/SimpleProxy.dart';
 import 'package:my_app/pages/home/datagrid/datagrid.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:updat/updat.dart';
 
 import '../../core/Streamer.dart';
 import '../../main.dart';
@@ -139,15 +140,43 @@ class HomePageStatefull extends State<HomePage> {
                   child: SizedBox(
                 height: 30,
                 width: 280,
-                child: Center(
-                    child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green),
-                        onPressed: _startStreaming,
-                        child: Text(
-                          "Lancer le bot",
-                          style: TextStyle(fontSize: 18.0, color: Colors.white),
-                        ))),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton(
+                      onPressed: _startStreaming,
+                      child: Text('Démarrer le streaming',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w400,
+                          )),
+                      style: ButtonStyle(
+
+                        backgroundColor: WidgetStateProperty.all<Color>(
+                          Colors.green,
+                        ),
+                      ),
+                    ),
+                    ElevatedButton(onPressed:
+                    () => UpdatWidget(
+                      currentVersion: "1.0.0",
+                      getLatestVersion: () async {
+                        // Here you should fetch the latest version. It must be semantic versioning for update detection to work properly.
+                        return "1.0.1";
+                      },
+                      getBinaryUrl: (latestVersion) async {
+                        // Here you provide the link to the binary the user should download. Make sure it is the correct one for the platform!
+                        return "https://github.com/latest/release/bin.exe";
+                      },
+                      // Lastly, enter your app name so we know what to call your files.
+                      appName: "Updat Example",
+                    ), child: Text('Mise à jours',
+                        style: TextStyle(
+                          color: Colors.purple.shade700,
+                          fontWeight: FontWeight.w400,
+                        )),)
+                  ],
+                )
               )),
               const SizedBox(height: 0)
             ],

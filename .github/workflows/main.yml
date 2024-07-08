@@ -29,14 +29,12 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const tagName = `v${new Date().toISOString().split('T')[0]}`;
             github.rest.git.createRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              ref: `refs/tags/${tagName}`,
-              sha: context.sha
-            });
-            return tagName;
+              sha: context.sha,
+              ref: 'refs/tags/v${{steps.extractVersion.outputs.version }}'
+            })
 
       - name: Create Release
         id: create_release

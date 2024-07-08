@@ -26,25 +26,13 @@ jobs:
       - name: Build Windows Executable
         run: flutter build windows --release
 
-      - name: Create Tag
-        uses: actions/github-script@v5
-        id: create_tag
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            github.rest.git.createRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              sha: context.sha,
-              ref: 'refs/tags/v1.0.0'
-            })
 
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.create_tag.outputs.tag_name }}
-          name: Release ${{ steps.create_tag.outputs.tag_name }}
+          tag_name: "v1.0.0"
+          name: Release v1.0.0
           draft: false
           prerelease: false
           files: |

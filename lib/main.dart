@@ -8,7 +8,6 @@ import 'core/Streamer.dart';
 import 'models/domain/Account.dart';
 
 void main() async {
-
   runApp(const MyApp());
 }
 

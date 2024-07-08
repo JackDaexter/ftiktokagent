@@ -137,47 +137,55 @@ class HomePageStatefull extends State<HomePage> {
               const Expanded(child: SizedBox.shrink()), // <-- Expanded
 
               Center(
-                  child: SizedBox(
-                height: 30,
-                width: 280,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ElevatedButton(
-                      onPressed: _startStreaming,
-                      child: Text('Démarrer le streaming',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w400,
-                          )),
-                      style: ButtonStyle(
+                  child: Container(
+                      color: Colors.cyan,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          ElevatedButton(
+                            onPressed: _startStreaming,
+                            child: Text('Démarrer le streaming',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w400,
+                                )),
+                            style: ButtonStyle(
+                              backgroundColor: WidgetStateProperty.all<Color>(
+                                Colors.green,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Align(
+                              alignment: Alignment(10.0, 5.0),
+                              child: ElevatedButton(
 
-                        backgroundColor: WidgetStateProperty.all<Color>(
-                          Colors.green,
-                        ),
-                      ),
-                    ),
-                    ElevatedButton(onPressed:
-                    () => UpdatWidget(
-                      currentVersion: "1.0.0",
-                      getLatestVersion: () async {
-                        // Here you should fetch the latest version. It must be semantic versioning for update detection to work properly.
-                        return "1.0.1";
-                      },
-                      getBinaryUrl: (latestVersion) async {
-                        // Here you provide the link to the binary the user should download. Make sure it is the correct one for the platform!
-                        return "https://github.com/latest/release/bin.exe";
-                      },
-                      // Lastly, enter your app name so we know what to call your files.
-                      appName: "Updat Example",
-                    ), child: Text('Mise à jours',
-                        style: TextStyle(
-                          color: Colors.purple.shade700,
-                          fontWeight: FontWeight.w400,
-                        )),)
-                  ],
-                )
-              )),
+                                style: ButtonStyle(
+                                  backgroundColor: WidgetStateProperty.all<Color>(
+                                    Colors.purple.shade700,
+                                  ),
+                                ),
+                                onPressed: () => UpdatWidget(
+                                  currentVersion: "1.0.0",
+                                  getLatestVersion: () async {
+                                    // Here you should fetch the latest version. It must be semantic versioning for update detection to work properly.
+                                    return "1.0.1";
+                                  },
+                                  getBinaryUrl: (latestVersion) async {
+                                    // Here you provide the link to the binary the user should download. Make sure it is the correct one for the platform!
+                                    return "https://github.com/latest/release/bin.exe";
+                                  },
+                                  // Lastly, enter your app name so we know what to call your files.
+                                  appName: "Updat Example",
+                                ),
+                                child: Text('Mise à jours',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w400,
+                                    )),
+                              ))
+                        ],
+                      ))),
               const SizedBox(height: 0)
             ],
           ),

@@ -1,7 +1,5 @@
 import 'dart:developer';
 
-import 'package:my_app/models/infrastructure/IObtainAccounts.dart';
-
 import '../api/gmai_generator_api.dart';
 
 class AccountObject {

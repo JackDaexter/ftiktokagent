@@ -31,7 +31,6 @@ jobs:
         id: create_tag
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ github.ref_name }}
           script: |
             github.rest.git.createRef({
               owner: context.repo.owner,

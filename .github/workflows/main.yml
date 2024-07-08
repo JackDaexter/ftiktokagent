@@ -40,7 +40,7 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            build\windows\x64\runner\Release\my_app.exe
+            ./build/windows/x64/runner/Release/my_app.exe
       
 
       - name: Output Release URL

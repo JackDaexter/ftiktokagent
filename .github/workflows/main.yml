@@ -37,7 +37,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               sha: context.sha,
-              ref: 'refs/tags/${tag}'
+              ref: 'refs/tags/v1.0.0'
             })
 
       - name: Create Release

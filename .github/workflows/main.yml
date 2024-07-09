@@ -30,6 +30,10 @@ jobs:
         run: flutter build windows --release
         working-directory: ./
 
+      - name: Zip files
+        shell: pwsh
+        run: |
+            Compress-Archive -Path ./build/windows/x64/runner/Release/* -DestinationPath ./build/windows/x64/runner/Release.zip
 
       - name: Create Release
         id: create_release
@@ -47,3 +51,4 @@ jobs:
             ./build/windows/x64/runner/Release/flutter_windows.dll
             ./build/windows/x64/runner/Release/window_manager_plugin.dll
             ./build/windows/x64/runner/Release/WinSparkle.dll
+            ./build/windows/x64/runner/Release.zip

@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  Release:
     runs-on: windows-latest
 
     steps:
@@ -30,9 +30,6 @@ jobs:
         run: flutter build windows --release
         working-directory: ./
 
-      - name: List all files
-        run: Get-ChildItem -Path . -Directory -Recurse
-        working-directory: build\windows\x64\runner\Release\
 
       - name: Create Release
         id: create_release
@@ -44,8 +41,9 @@ jobs:
           prerelease: false
           files: |
             ./build/windows/x64/runner/Release/my_app.exe
-      
-
-      - name: Output Release URL
-        run: |
-          echo "Release URL: ${{ steps.create_release.outputs.upload_url }}"
+            ./build/windows/x64/runner/Release/url_launcher_windows_plugin.dll
+            ./build/windows/x64/runner/Release/screen_retriever_plugin.dll
+            ./build/windows/x64/runner/Release/auto_updater_windows_plugin.dll
+            ./build/windows/x64/runner/Release/flutter_windows.dll
+            ./build/windows/x64/runner/Release/window_manager_plugin.dll
+            ./build/windows/x64/runner/Release/WinSparkle.dll

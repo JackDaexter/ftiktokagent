@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:math' as math;
+import 'package:http/http.dart' as http;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -28,167 +30,186 @@ class HomePageStatefull extends State<HomePage> {
   final List<Streamer> streamers = <Streamer>[];
   final Map<Streamer, ReceivePort> receivePort = HashMap(); // Is a HashMap
   Timer? timer;
+  late String appVersion = "0.0.1";
+  Color color = const Color(0xff1890ff);
 
   HomePageStatefull({Key? key}) {
     loadProxyFromData();
   }
 
+
   @override
   Widget build(BuildContext context) {
+
     // Material is a conceptual piece
     // of paper on which the UI appears.
-    return Material(
-        // Column is a vertical, linear layout.
-        color: Colors.grey[200],
-        child: Container(
-          padding: EdgeInsets.all(10.0),
-          child: Column(
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return Scaffold(
+        body: Material(
+
+            // Column is a vertical, linear layout.
+            color: Colors.grey[200],
+            child: Container(
+              padding: EdgeInsets.all(10.0),
+              child: Column(
                 children: [
-                  Container(
-                    margin: EdgeInsets.only(left: 10.0, top: 5.0),
-                    height: 600,
-                    width: 800,
-                    child: AccountDatagrid(parentCallBuilder:
-                        (BuildContext context,
-                            void Function() methodFromChild) {
-                      updateChildState = methodFromChild;
-                    }),
-                  ),
-                  SizedBox(width: 30), // give it width
-                  Container(
-                      child: Card(
-                    // clipBehavior is necessary because, without it, the InkWell's animation
-                    // will extend beyond the rounded edges of the [Card] (see https://github.com/flutter/flutter/issues/109776)
-                    // This comes with a small performance cost, and you should not set [clipBehavior]
-                    // unless you need it.
-                    color: Colors.white,
-                    clipBehavior: Clip.hardEdge,
-                    child: SizedBox(
-                      width: 300,
-                      height: 180,
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: <Widget>[
-                            Center(
-                                child: Row(
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        margin: EdgeInsets.only(left: 10.0, top: 5.0),
+                        height: 600,
+                        width: 800,
+                        child: AccountDatagrid(parentCallBuilder:
+                            (BuildContext context,
+                                void Function() methodFromChild) {
+                          updateChildState = methodFromChild;
+                        }),
+                      ),
+                      SizedBox(width: 30), // give it width
+                      Container(
+                          child: Card(
+                        // clipBehavior is necessary because, without it, the InkWell's animation
+                        // will extend beyond the rounded edges of the [Card] (see https://github.com/flutter/flutter/issues/109776)
+                        // This comes with a small performance cost, and you should not set [clipBehavior]
+                        // unless you need it.
+                        color: Colors.white,
+                        clipBehavior: Clip.hardEdge,
+                        child: SizedBox(
+                          width: 300,
+                          height: 180,
+                          child: Center(
+                            child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.security,
-                                    color: Colors.green, size: 20),
-                                const SizedBox(width: 10),
-                                Text(
-                                  'Nombre de proxy chargés: ${proxiesData.length}',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            )),
-                            const SizedBox(height: 30),
-                            Column(
-                              children: [
-                                ElevatedButton(
-                                    onPressed: _importProxyFromFile,
-                                    style: ButtonStyle(
-                                      textStyle:
-                                          WidgetStateProperty.all<TextStyle>(
-                                        const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w400,
+                              children: <Widget>[
+                                Center(
+                                    child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.security,
+                                        color: Colors.green, size: 20),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      'Nombre de proxy chargés: ${proxiesData.length}',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                )),
+                                const SizedBox(height: 30),
+                                Column(
+                                  children: [
+                                    ElevatedButton(
+                                        onPressed: _importProxyFromFile,
+                                        style: ButtonStyle(
+                                          textStyle: WidgetStateProperty.all<
+                                              TextStyle>(
+                                            const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w400,
+                                            ),
+                                          ),
+                                          backgroundColor:
+                                              WidgetStateProperty.all<Color>(
+                                            Colors.white,
+                                          ),
+                                        ),
+                                        child: Text('Importer des proxies')),
+                                    const SizedBox(height: 10),
+                                    ElevatedButton(
+                                      onPressed: _removeProxies,
+                                      child: Text('Supprimer les proxies'),
+                                      style: ButtonStyle(
+                                        textStyle:
+                                            WidgetStateProperty.all<TextStyle>(
+                                          TextStyle(
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                        backgroundColor:
+                                            WidgetStateProperty.all<Color>(
+                                          Colors.redAccent,
                                         ),
                                       ),
-                                      backgroundColor:
-                                          WidgetStateProperty.all<Color>(
-                                        Colors.white,
-                                      ),
                                     ),
-                                    child: Text('Importer des proxies')),
-                                const SizedBox(height: 10),
-                                ElevatedButton(
-                                  onPressed: _removeProxies,
-                                  child: Text('Supprimer les proxies'),
-                                  style: ButtonStyle(
-                                    textStyle:
-                                        WidgetStateProperty.all<TextStyle>(
-                                      TextStyle(
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                    backgroundColor:
-                                        WidgetStateProperty.all<Color>(
-                                      Colors.redAccent,
-                                    ),
-                                  ),
+                                  ],
                                 ),
                               ],
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  )),
-                ],
-              ),
-              const Expanded(child: SizedBox.shrink()), // <-- Expanded
-
-              Center(
-                  child: Container(
-                      color: Colors.cyan,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          ElevatedButton(
-                            onPressed: _startStreaming,
-                            child: Text('Démarrer le streaming',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w400,
-                                )),
-                            style: ButtonStyle(
-                              backgroundColor: WidgetStateProperty.all<Color>(
-                                Colors.green,
-                              ),
-                            ),
                           ),
-                          const SizedBox(width: 10),
-                          Align(
-                              alignment: Alignment(10.0, 5.0),
-                              child: ElevatedButton(
+                        ),
+                      )),
+                    ],
+                  ),
+                  const Expanded(child: SizedBox.shrink()), // <-- Expanded
 
+                  Center(
+                      child: Container(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              ElevatedButton(
+                                onPressed: _startStreaming,
                                 style: ButtonStyle(
-                                  backgroundColor: WidgetStateProperty.all<Color>(
-                                    Colors.purple.shade700,
+                                  backgroundColor:
+                                  WidgetStateProperty.all<Color>(
+                                    Colors.green,
                                   ),
                                 ),
-                                onPressed: () => UpdatWidget(
-                                  currentVersion: "1.0.0",
-                                  getLatestVersion: () async {
-                                    // Here you should fetch the latest version. It must be semantic versioning for update detection to work properly.
-                                    return "1.0.1";
-                                  },
-                                  getBinaryUrl: (latestVersion) async {
-                                    // Here you provide the link to the binary the user should download. Make sure it is the correct one for the platform!
-                                    return "https://github.com/latest/release/bin.exe";
-                                  },
-                                  // Lastly, enter your app name so we know what to call your files.
-                                  appName: "Updat Example",
-                                ),
-                                child: Text('Mise à jours',
+                                child: const Text('Démarrer le streaming',
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.w400,
                                     )),
-                              ))
-                        ],
-                      ))),
-              const SizedBox(height: 0)
-            ],
-          ),
+                              ),
+
+                              ElevatedButton(
+                                onPressed: _startStreaming,
+                                style: ButtonStyle(
+                                  backgroundColor:
+                                      WidgetStateProperty.all<Color>(
+                                    Colors.green,
+                                  ),
+                                ),
+                                child: const Text('Démarrer le streaming',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w400,
+                                    )),
+                              ),
+                              const SizedBox(width: 10),
+                            ],
+                          ))),
+                  const SizedBox(height: 0)
+                ],
+              ),
+            )),
+        floatingActionButton: UpdatWidget(
+          getLatestVersion: () async {
+
+            final data = await http.get(Uri.parse(
+              "https://api.github.com/repos/JackDaexter/ftiktokagent/releases/latest",
+            ));
+
+            var version = jsonDecode(data.body)["tag_name"];
+            return version.split("v")[1].toString();
+          },
+
+          getBinaryUrl: (version) async {
+            log(version as String);
+            // Github also gives us a great way to download the binary for a certain release (as long as we use a consistent naming scheme)
+
+            // Make sure that this link includes the platform extension with which to save your binary.
+            // If you use https://exapmle.com/latest/macos for instance then you need to create your own file using `getDownloadFileLocation`
+            return "https://github.com/JackDaexter/ftiktokagent/releases/latest/download/my_app.exe";
+          },
+          appName:
+              "ftiktokagent", // This is used to name the downloaded files.
+          currentVersion: appVersion,
+          callback: (status) {
+            print(status);
+          },
         ));
   }
 

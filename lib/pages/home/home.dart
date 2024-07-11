@@ -30,7 +30,7 @@ class HomePageStatefull extends State<HomePage> {
   final List<Streamer> streamers = <Streamer>[];
   final Map<Streamer, ReceivePort> receivePort = HashMap(); // Is a HashMap
   Timer? timer;
-  late String appVersion = "0.0.1";
+  final String appVersion = "0.1.6";
   Color color = const Color(0xff1890ff);
 
   HomePageStatefull({Key? key}) {
@@ -146,22 +146,16 @@ class HomePageStatefull extends State<HomePage> {
 
                   Center(
                       child: Container(
+                        alignment: Alignment.center,
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              ElevatedButton(
-                                onPressed: _startStreaming,
-                                style: ButtonStyle(
-                                  backgroundColor:
-                                  WidgetStateProperty.all<Color>(
-                                    Colors.green,
-                                  ),
+                              Text(
+                                'v$appVersion',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
                                 ),
-                                child: const Text('Démarrer le streaming',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w400,
-                                    )),
                               ),
 
                               ElevatedButton(

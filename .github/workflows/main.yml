@@ -26,6 +26,11 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: List all files
+        shell: pwsh
+        run: |
+          Get-ChildItem -Path . -File
+
       - name: Build Windows Executable
         run: flutter build windows --release
         working-directory: ./

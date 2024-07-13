@@ -26,10 +26,10 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: List all filessd
+      - name: List all file
         shell: pwsh
         run: |
-          Get-ChildItem -Path . -File
+            Get-ChildItem -Path . -File
 
       - name: Build Windows Executable
         run: flutter build windows --release

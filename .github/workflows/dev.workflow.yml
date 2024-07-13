@@ -41,6 +41,6 @@ jobs:
       - name: List files
         shell: pwsh
         run: |
-          Get-ChildItem -Path . -File
+          Get-ChildItem -Path D:/a/ftiktokagent/ftiktokagent/lib/core -File
 
       

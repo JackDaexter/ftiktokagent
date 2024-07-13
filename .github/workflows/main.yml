@@ -2,9 +2,8 @@ name: Dart Release Workflow
 
 on:
   push:
-    branches:
-      - main
-
+    tags:
+      - 'v*'
 
 permissions:
   contents: write

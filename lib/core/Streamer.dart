@@ -125,9 +125,9 @@ class Streamer {
   }
 
   void start(List<dynamic> arguments) async {
+    var currentPath = Directory.current.path;
     Process chromeDriverProcess = await Process.start(
-        'C:\\Users\\franc\\IdeaProjects\\ftiktokagent\\lib\\core\\chromedriver.exe',
-        ['--port=4444', '--url-base=wd/hub']);
+        '$currentPath\\chromedriver.exe', ['--port=4444', '--url-base=wd/hub']);
     bool wasBlocked = false;
     sendPort = arguments[0] as SendPort;
 
@@ -140,7 +140,7 @@ class Streamer {
       sendPort!.send(clone);
 
       await driver.get('https://www.tiktok.com');
-      sleep(Duration(milliseconds: 2500));
+      sleep(const Duration(milliseconds: 2500));
       await SelectInPage.refusedCookieAsked(driver);
 
       await goToSubscribeIfAccountNotSubscribe();

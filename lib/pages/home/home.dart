@@ -5,10 +5,10 @@ import 'dart:developer';
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:math' as math;
-import 'package:http/http.dart' as http;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:my_app/models/domain/SimpleProxy.dart';
 import 'package:my_app/pages/home/datagrid/datagrid.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -30,17 +30,15 @@ class HomePageStatefull extends State<HomePage> {
   final List<Streamer> streamers = <Streamer>[];
   final Map<Streamer, ReceivePort> receivePort = HashMap(); // Is a HashMap
   Timer? timer;
-  final String appVersion = "0.1.6";
+  final String appVersion = "0.1.7";
   Color color = const Color(0xff1890ff);
 
   HomePageStatefull({Key? key}) {
     loadProxyFromData();
   }
 
-
   @override
   Widget build(BuildContext context) {
-
     // Material is a conceptual piece
     // of paper on which the UI appears.
     return Scaffold(
@@ -49,14 +47,14 @@ class HomePageStatefull extends State<HomePage> {
             // Column is a vertical, linear layout.
             color: Colors.grey[200],
             child: Container(
-              padding: EdgeInsets.all(10.0),
+              padding: const EdgeInsets.all(10.0),
               child: Column(
                 children: [
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
-                        margin: EdgeInsets.only(left: 10.0, top: 5.0),
+                        margin: const EdgeInsets.only(left: 10.0, top: 5.0),
                         height: 600,
                         width: 800,
                         child: AccountDatagrid(parentCallBuilder:
@@ -65,9 +63,8 @@ class HomePageStatefull extends State<HomePage> {
                           updateChildState = methodFromChild;
                         }),
                       ),
-                      SizedBox(width: 30), // give it width
-                      Container(
-                          child: Card(
+                      const SizedBox(width: 30), // give it width
+                      Card(
                         // clipBehavior is necessary because, without it, the InkWell's animation
                         // will extend beyond the rounded edges of the [Card] (see https://github.com/flutter/flutter/issues/109776)
                         // This comes with a small performance cost, and you should not set [clipBehavior]
@@ -85,12 +82,12 @@ class HomePageStatefull extends State<HomePage> {
                                     child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.security,
+                                    const Icon(Icons.security,
                                         color: Colors.green, size: 20),
                                     const SizedBox(width: 10),
                                     Text(
                                       'Nombre de proxy chargés: ${proxiesData.length}',
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w500,
                                       ),
@@ -115,15 +112,15 @@ class HomePageStatefull extends State<HomePage> {
                                             Colors.white,
                                           ),
                                         ),
-                                        child: Text('Importer des proxies')),
+                                        child:
+                                            const Text('Importer des proxies')),
                                     const SizedBox(height: 10),
                                     ElevatedButton(
                                       onPressed: _removeProxies,
-                                      child: Text('Supprimer les proxies'),
                                       style: ButtonStyle(
                                         textStyle:
                                             WidgetStateProperty.all<TextStyle>(
-                                          TextStyle(
+                                          const TextStyle(
                                             color: Colors.white,
                                           ),
                                         ),
@@ -132,6 +129,8 @@ class HomePageStatefull extends State<HomePage> {
                                           Colors.redAccent,
                                         ),
                                       ),
+                                      child:
+                                          const Text('Supprimer les proxies'),
                                     ),
                                   ],
                                 ),
@@ -139,25 +138,24 @@ class HomePageStatefull extends State<HomePage> {
                             ),
                           ),
                         ),
-                      )),
+                      ),
                     ],
                   ),
                   const Expanded(child: SizedBox.shrink()), // <-- Expanded
 
                   Center(
                       child: Container(
-                        alignment: Alignment.center,
+                          alignment: Alignment.center,
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
                                 'v$appVersion',
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
-
                               ElevatedButton(
                                 onPressed: _startStreaming,
                                 style: ButtonStyle(
@@ -180,8 +178,9 @@ class HomePageStatefull extends State<HomePage> {
               ),
             )),
         floatingActionButton: UpdatWidget(
-          getLatestVersion: () async {
+          closeOnInstall: true,
 
+          getLatestVersion: () async {
             final data = await http.get(Uri.parse(
               "https://api.github.com/repos/JackDaexter/ftiktokagent/releases/latest",
             ));
@@ -191,17 +190,21 @@ class HomePageStatefull extends State<HomePage> {
           },
 
           getBinaryUrl: (version) async {
-            log(version as String);
-            // Github also gives us a great way to download the binary for a certain release (as long as we use a consistent naming scheme)
-
             // Make sure that this link includes the platform extension with which to save your binary.
             // If you use https://exapmle.com/latest/macos for instance then you need to create your own file using `getDownloadFileLocation`
             return "https://github.com/JackDaexter/ftiktokagent/releases/latest/download/my_app.exe";
           },
-          appName:
-              "ftiktokagent", // This is used to name the downloaded files.
+          getDownloadFileLocation: (version) async {
+            var currentPath = Directory.current.path;
+
+            String filePath = '$currentPath\\Release.zip';
+
+            return File(filePath);
+          },
+          appName: "ftiktokagent", // This is used to name the downloaded files.
           currentVersion: appVersion,
           callback: (status) {
+            log("Status: " + status.toString());
             print(status);
           },
         ));

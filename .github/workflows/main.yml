@@ -58,7 +58,6 @@ jobs:
           prerelease: false
           files: |
             ./chromedriver.exe
-            ./README.md
             ./build/windows/x64/runner/Release/my_app.exe
             ./build/windows/x64/runner/Release/url_launcher_windows_plugin.dll
             ./build/windows/x64/runner/Release/screen_retriever_plugin.dll

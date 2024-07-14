@@ -14,6 +14,7 @@ import 'package:my_app/pages/home/datagrid/datagrid.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:updat/updat.dart';
 
+import '../../components/custom_dialog.dart';
 import '../../core/Streamer.dart';
 import '../../main.dart';
 
@@ -181,12 +182,17 @@ class HomePageStatefull extends State<HomePage> {
           closeOnInstall: true,
 
           getLatestVersion: () async {
-            final data = await http.get(Uri.parse(
-              "https://api.github.com/repos/JackDaexter/ftiktokagent/releases/latest",
-            ));
+            try{
+              final data = await http.get(Uri.parse(
+                "https://api.github.com/repos/JackDaexter/ftiktokagent/releases/latest",
+              ));
 
-            var version = jsonDecode(data.body)["tag_name"];
-            return version.split("v")[1].toString();
+              var version = jsonDecode(data.body)["tag_name"];
+              return version.split("v")[1].toString();
+            }catch(e){
+              await CustomDialog(context, "Erreur", "Impossible de récupérer la dernière version");
+            }
+
           },
 
           getBinaryUrl: (version) async {

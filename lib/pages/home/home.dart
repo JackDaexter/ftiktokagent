@@ -190,7 +190,9 @@ class HomePageStatefull extends State<HomePage> {
               var version = jsonDecode(data.body)["tag_name"];
               return version.split("v")[1].toString();
             }catch(e){
-              await CustomDialog(context, "Erreur", "Impossible de récupérer la dernière version");
+
+              await CustomDialog(context, "Erreur lors de la recherche de MAJ",e.toString());
+              return null;
             }
 
           },

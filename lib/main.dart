@@ -10,11 +10,10 @@ import 'core/Streamer.dart';
 import 'models/domain/Account.dart';
 
 void main() async {
-
   WidgetsFlutterBinding.ensureInitialized();
 
-  ByteData data = await PlatformAssetBundle().load('assets/ca/lets-encrypt-r3.pem');
-  SecurityContext.defaultContext.setTrustedCertificatesBytes(data.buffer.asUint8List());
+  /// This HttpOverride will be set globally in the app.
+  HttpOverrides.global = MyHttpOverrides();
 
 
   runApp(const MyApp());
@@ -64,5 +63,21 @@ class MyApp extends StatelessWidget {
       home: MyAppInherited(
           child: HomePage(), accounts: [], streamerInstances: []),
     );
+  }
+}
+
+class MyHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return super.createHttpClient(context)..badCertificateCallback = (X509Certificate cert, String host, int port){
+      // Allowing only our Base API URL.
+      List<String> validHosts = ["https://api.github.com/repos/JackDaexter/ftiktokagent/releases/latest"];
+
+      final isValidHost = validHosts.contains(host);
+      return isValidHost;
+
+      // return true if you want to allow all host. (This isn't recommended.)
+      // return true;
+    };
   }
 }

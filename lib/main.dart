@@ -1,21 +1,13 @@
-import 'dart:io';
 import 'dart:math';
 import 'dart:developer' as dev;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:my_app/pages/home/home.dart';
 
 import 'core/Streamer.dart';
 import 'models/domain/Account.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  /// This HttpOverride will be set globally in the app.
-  HttpOverrides.global = MyHttpOverrides();
-
-
   runApp(const MyApp());
 }
 
@@ -24,11 +16,11 @@ class MyAppInherited extends InheritedWidget {
   late List<Streamer> streamerInstances;
 
   MyAppInherited({
-    Key? key,
-    required Widget child,
+    super.key,
+    required super.child,
     required this.accounts,
     required this.streamerInstances,
-  }) : super(child: child, key: key);
+  });
 
   static MyAppInherited of(BuildContext context) {
     return context.dependOnInheritedWidgetOfExactType<MyAppInherited>()!;
@@ -63,21 +55,5 @@ class MyApp extends StatelessWidget {
       home: MyAppInherited(
           child: HomePage(), accounts: [], streamerInstances: []),
     );
-  }
-}
-
-class MyHttpOverrides extends HttpOverrides {
-  @override
-  HttpClient createHttpClient(SecurityContext? context) {
-    return super.createHttpClient(context)..badCertificateCallback = (X509Certificate cert, String host, int port){
-      // Allowing only our Base API URL.
-      List<String> validHosts = ["https://api.github.com/repos/JackDaexter/ftiktokagent/releases/latest"];
-
-      final isValidHost = validHosts.contains(host);
-      return isValidHost;
-
-      // return true if you want to allow all host. (This isn't recommended.)
-      // return true;
-    };
   }
 }

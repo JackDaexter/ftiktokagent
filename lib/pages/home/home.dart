@@ -6,12 +6,14 @@ import 'dart:io';
 import 'dart:isolate';
 import 'dart:math' as math;
 
+import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:my_app/models/domain/SimpleProxy.dart';
 import 'package:my_app/pages/home/datagrid/datagrid.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:simple_loading_dialog/simple_loading_dialog.dart';
 import 'package:updat/updat.dart';
 
 import '../../components/custom_dialog.dart';
@@ -31,7 +33,7 @@ class HomePageStatefull extends State<HomePage> {
   final List<Streamer> streamers = <Streamer>[];
   final Map<Streamer, ReceivePort> receivePort = HashMap(); // Is a HashMap
   Timer? timer;
-  final String appVersion = "0.1.0";
+  final String appVersion = "0.0.1";
   Color color = const Color(0xff1890ff);
 
   HomePageStatefull({Key? key}) {
@@ -151,7 +153,7 @@ class HomePageStatefull extends State<HomePage> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                'v$appVersion',
+                                'Never change v$appVersion',
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w500,
@@ -179,15 +181,19 @@ class HomePageStatefull extends State<HomePage> {
               ),
             )),
         floatingActionButton: UpdatWidget(
-          closeOnInstall: true,
+          closeOnInstall: false,
+          openOnDownload: true,
 
           getLatestVersion: () async {
+            log(Directory.current.path);
             try{
+              log("GRos pd");
               final data = await http.get(Uri.parse(
                 "https://api.github.com/repos/JackDaexter/ftiktokagent/releases/latest",
               ));
 
               var version = jsonDecode(data.body)["tag_name"];
+              log(version);
               return version.split("v")[1].toString();
             }catch(e){
 
@@ -196,23 +202,21 @@ class HomePageStatefull extends State<HomePage> {
             }
 
           },
+          getDownloadFileLocation: (version) async {
+
+            return File("C:\\Users\\franc\\IdeaProjects\\ftiktokagent\\build\\windows\\x64\\runner\\Release\\myy_app.exe");
+          },
 
           getBinaryUrl: (version) async {
-            // Make sure that this link includes the platform extension with which to save your binary.
-            // If you use https://exapmle.com/latest/macos for instance then you need to create your own file using `getDownloadFileLocation`
-            return "https://github.com/JackDaexter/ftiktokagent/releases/latest/download/my_app.exe";
-          },
-          getDownloadFileLocation: (version) async {
+            var message = "Downloading files";
             var currentPath = Directory.current.path;
+            return "https://github.com/JackDaexter/ftiktokagent/releases/latest/download/my_app.exe";
 
-            String filePath = '$currentPath\\Release.zip';
-
-            return File(filePath);
           },
+
           appName: "ftiktokagent", // This is used to name the downloaded files.
           currentVersion: appVersion,
           callback: (status) {
-            log("Status: " + status.toString());
             print(status);
           },
         ));

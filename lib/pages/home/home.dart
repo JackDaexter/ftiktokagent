@@ -33,7 +33,7 @@ class HomePageStatefull extends State<HomePage> {
   final List<Streamer> streamers = <Streamer>[];
   final Map<Streamer, ReceivePort> receivePort = HashMap(); // Is a HashMap
   Timer? timer;
-  final String appVersion = "0.0.1";
+  final String appVersion = "0.1.5";
   Color color = const Color(0xff1890ff);
 
   HomePageStatefull({Key? key}) {
@@ -153,7 +153,7 @@ class HomePageStatefull extends State<HomePage> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                'Never change v$appVersion',
+                                'v$appVersion',
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w500,
@@ -185,38 +185,43 @@ class HomePageStatefull extends State<HomePage> {
           openOnDownload: true,
 
           getLatestVersion: () async {
-            log(Directory.current.path);
-            try{
-              log("GRos pd");
-              final data = await http.get(Uri.parse(
-                "https://api.github.com/repos/JackDaexter/ftiktokagent/releases/latest",
-              ));
+            final data = await http.get(Uri.parse(
+              "https://api.github.com/repos/JackDaexter/ftiktokagent/releases/latest",
+            ));
 
-              var version = jsonDecode(data.body)["tag_name"];
-              log(version);
-              return version.split("v")[1].toString();
-            }catch(e){
-
-              await CustomDialog(context, "Erreur lors de la recherche de MAJ",e.toString());
-              return null;
-            }
-
+            var version = jsonDecode(data.body)["tag_name"];
+            return version.split("v")[1].toString();
           },
-          getDownloadFileLocation: (version) async {
-
-            return File("C:\\Users\\franc\\IdeaProjects\\ftiktokagent\\build\\windows\\x64\\runner\\Release\\myy_app.exe");
-          },
-
           getBinaryUrl: (version) async {
-            var message = "Downloading files";
-            var currentPath = Directory.current.path;
-            return "https://github.com/JackDaexter/ftiktokagent/releases/latest/download/my_app.exe";
+            await showSimpleLoadingDialog(
+              context: context,
+              future: () async {
+                await downloadUpdate();
+              },
+              dialogBuilder: (context, _) {
+                return const AlertDialog(
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(height: 16),
+                      CircularProgressIndicator(),
+                      SizedBox(height: 16),
+                      Text('Loading...'),
+                      SizedBox(height: 16),
+                    ],
+                  ),
+                );
+              },
+            );
 
+            return "https://github.com/JackDaexter/ftiktokagent/releases/latest/download/my_app.exe";
           },
+
 
           appName: "ftiktokagent", // This is used to name the downloaded files.
           currentVersion: appVersion,
           callback: (status) {
+            log("Status: $status");
             print(status);
           },
         ));
@@ -311,5 +316,66 @@ class HomePageStatefull extends State<HomePage> {
             element.account.email == newStreamer.account.email)] = newStreamer;
 
     updateChildState.call();
+  }
+
+  Future<void> renameFile(String currentPath, String newPath) async {
+    File file = File(currentPath);
+    try {
+      // Renaming the file
+      await file.rename(newPath);
+      print('File renamed successfully');
+    } catch (e) {
+      // Handle the error, e.g., file not found, permission issues, etc.
+      print('Error renaming file: $e');
+    }
+  }
+
+  Future<void> renameFolder(String currentPath, String newPath) async {
+    Directory directory = Directory(currentPath);
+    try {
+      // Renaming the folder
+      await directory.rename(newPath);
+      print('Folder renamed successfully');
+    } catch (e) {
+      // Handle the error, e.g., folder not found, permission issues, etc.
+      print('Error renaming folder: $e');
+    }
+  }
+
+  Future<bool> downloadUpdate() async {
+    var oldFilePath = [];
+    var oldFolderPath = [];
+    var currentPath = Directory.current.path;
+    try {
+      await renameFolder(
+          "C:\\Users\\franc\\IdeaProjects\\ftiktokagent\\build\\windows\\x64\\runner\\Release\\data",
+          "C:\\Users\\franc\\IdeaProjects\\ftiktokagent\\build\\windows\\x64\\runner\\Release\\data_old");
+      oldFolderPath.add("C:\\Users\\franc\\IdeaProjects\\ftiktokagent\\build\\windows\\x64\\runner\\Release\\data_old");
+      await Dio().download(
+          "https://github.com/JackDaexter/ftiktokagent/releases/latest/download/data.zip",
+          "C:\\Users\\franc\\IdeaProjects\\ftiktokagent\\build\\windows\\x64\\runner\\Release\\data.zip");
+      await unzipDataFolder();
+
+      await renameFile(
+          "C:\\Users\\franc\\IdeaProjects\\ftiktokagent\\build\\windows\\x64\\runner\\Release\\WinSparkle.dll",
+          "C:\\Users\\franc\\IdeaProjects\\ftiktokagent\\build\\windows\\x64\\runner\\Release\\WinSparkle_old.dll");
+      oldFilePath.add("C:\\Users\\franc\\IdeaProjects\\ftiktokagent\\build\\windows\\x64\\runner\\Release\\WinSparkle_old.dll");
+      await Dio().download(
+          "https://github.com/JackDaexter/ftiktokagent/releases/latest/download/WinSparkle.dll",
+          "C:\\Users\\franc\\IdeaProjects\\ftiktokagent\\build\\windows\\x64\\runner\\Release\\WinSparkle.dll");
+    } catch (e) {
+      return false;
+    }
+    return true;
+  }
+
+  Future<void> unzipDataFolder() async {
+    var currentPath = Directory.current.path;
+    try {
+      await Process.run(
+          "7z", ["x", "C:\\Users\\franc\\IdeaProjects\\ftiktokagent\\build\\windows\\x64\\runner\\Release\\data.zip", "-oC:\\Users\\franc\\IdeaProjects\\ftiktokagent\\build\\windows\\x64\\runner\\Release"]);
+    } catch (e) {
+      rethrow;
+    }
   }
 }

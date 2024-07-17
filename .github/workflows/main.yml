@@ -33,6 +33,7 @@ jobs:
         run: flutter build windows --release
         working-directory: ./
 
+
       - name: Zip data files
         shell: pwsh
         run: |

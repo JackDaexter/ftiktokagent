@@ -33,10 +33,20 @@ jobs:
         run: flutter build windows --release
         working-directory: ./
 
-      - name: Zip files
+      - name: Zip data files
         shell: pwsh
         run: |
-          Compress-Archive -Path ./build/windows/x64/runner/Release/* -DestinationPath ./build/windows/x64/runner/Release.zip
+          New-Item -ItemType Directory -Path ${{github.ref_name}} -Force:$true
+          Move-Item -Path ./chromedriver.exe -Destination ${{github.ref_name}} -ErrorAction Stop
+          Move-Item -Path ./build/windows/x64/runner/Release/my_app.exe -Destination ${{github.ref_name}} -ErrorAction Stop
+          Move-Item -Path ./build/windows/x64/runner/Release/data -Destination ${{github.ref_name}} -ErrorAction Stop
+          Move-Item -Path ./build/windows/x64/runner/Release/url_launcher_windows_plugin.dll -Destination ${{github.ref_name}} -ErrorAction Stop
+          Move-Item -Path ./build/windows/x64/runner/Release/screen_retriever_plugin.dll -Destination ${{github.ref_name}} -ErrorAction Stop
+          Move-Item -Path ./build/windows/x64/runner/Release/auto_updater_windows_plugin.dll -Destination ${{github.ref_name}} -ErrorAction Stop
+          Move-Item -Path ./build/windows/x64/runner/Release/flutter_windows.dll -Destination ${{github.ref_name}} -ErrorAction Stop
+          Move-Item -Path ./build/windows/x64/runner/Release/window_manager_plugin.dll -Destination ${{github.ref_name}} -ErrorAction Stop
+          Move-Item -Path ./build/windows/x64/runner/Release/WinSparkle.dll -Destination ${{github.ref_name}} -ErrorAction Stop
+          Compress-Archive -Path ./build/windows/x64/runner/Release/data,  -DestinationPath ./build/windows/x64/runner/Release/${{github.ref_name}}.zip
 
       - name: List files
         shell: pwsh

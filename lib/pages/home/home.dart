@@ -35,7 +35,7 @@ class HomePageStatefull extends State<HomePage> {
   final List<Streamer> streamers = <Streamer>[];
   final Map<Streamer, ReceivePort> receivePort = HashMap(); // Is a HashMap
   Timer? timer;
-  final String appVersion = "0.1.1";
+  final String appVersion = "0.1.2";
   late String latestVersion;
   Color color = const Color(0xff1890ff);
 

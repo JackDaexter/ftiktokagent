@@ -9,6 +9,16 @@ class SelectInPage {
   }
 
   static Future<void> refusedCookieAsked(WebDriver driver) async {
+    try {
+      await driver
+          .findElement(
+              By.xpath("/html/body/tiktok-cookie-banner//div/div[2]/button[1]"))
+          .then((elem) => elem.click());
+    } catch (e) {
+      rethrow;
+      print("refusedCookieAsked failed");
+    }
+
     await driver
         .findElement(
             By.xpath("/html/body/tiktok-cookie-banner//div/div[2]/button[1]"))

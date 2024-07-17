@@ -106,7 +106,8 @@ class Streamer {
                 '--no-sandbox',
                 '--disable-extensions',
                 '--disable-popup-blocking',
-                '--mute-audio'
+                '--mute-audio',
+                '--incognito'
               ]
             }
           });
@@ -141,16 +142,19 @@ class Streamer {
 
       await driver.get('https://www.tiktok.com');
       sleep(const Duration(milliseconds: 2500));
-      await SelectInPage.refusedCookieAsked(driver);
 
       await goToSubscribeIfAccountNotSubscribe();
       await goToLoginPage(wasBlocked);
       await connectAccountToTiktok();
       await streamWhileNonStop();
     } catch (e) {
-      chromeDriverProcess.kill();
+      log("Error sa crash");
+      var isDead = chromeDriverProcess.kill();
+      log("Is dead $isDead");
       log(e.toString());
+      browserStatus = BrowserStatus.Inactive;
       sendStreamingInformation();
+      Isolate.current.kill();
     }
   }
 

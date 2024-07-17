@@ -291,7 +291,6 @@ class HomePageStatefull extends State<HomePage> {
   void _startStreaming() async {
     for (var streamer in MyAppInherited.of(context).streamerInstances) {
       var proxy = getRandomProxy();
-      log(streamer.toString());
       if (streamer.browserStatus == BrowserStatus.Inactive) {
         receivePort[streamer] = ReceivePort();
         await Isolate.spawn(

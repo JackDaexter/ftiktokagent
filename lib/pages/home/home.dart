@@ -35,7 +35,8 @@ class HomePageStatefull extends State<HomePage> {
   final List<Streamer> streamers = <Streamer>[];
   final Map<Streamer, ReceivePort> receivePort = HashMap(); // Is a HashMap
   Timer? timer;
-  final String appVersion = "0.1.4";
+  final String appVersion = "0.1.1";
+  late String latestVersion;
   Color color = const Color(0xff1890ff);
 
   HomePageStatefull({Key? key}) {
@@ -192,6 +193,7 @@ class HomePageStatefull extends State<HomePage> {
             ));
 
             var version = jsonDecode(data.body)["tag_name"];
+            latestVersion = version;
             return version.split("v")[1].toString();
           },
           getBinaryUrl: (version) async {
@@ -346,25 +348,15 @@ class HomePageStatefull extends State<HomePage> {
 
   Future<bool> downloadUpdate() async {
     List<String> oldFilePath = <String>[];
-    var currentPath = Directory.current.path;
+    var parentPath = Directory.current.parent.path;
+    log("Current path: $parentPath");
+
     try {
       await Dio().download(
-          "https://github.com/JackDaexter/ftiktokagent/releases/latest/download/data.zip",
-          "$currentPath\\data.zip");
+          "https://github.com/JackDaexter/ftiktokagent/releases/latest/download/$latestVersion.zip",
+          "$parentPath\\$latestVersion.zip");
       sleep(const Duration(seconds: 5));
-      await renameFolder("$currentPath\\data", "$currentPath\\data_old.old");
-      await unzipFileData("$currentPath\\data.zip", "$currentPath");
-      //oldFilePath.add("$currentPath\\data.zip");
-      //oldFilePath.add("$currentPath\\data_old.old");
-
-      await renameFile(
-          "$currentPath\\WinSparkle.dll", "$currentPath\\WinSparkle_old.dll");
-
-      oldFilePath.add("$currentPath\\WinSparkle_old.dll");
-      await Dio().download(
-          "https://github.com/JackDaexter/ftiktokagent/releases/latest/download/WinSparkle.dll",
-          "$currentPath\\WinSparkle.dll");
-      moveOldFiles(oldFilePath);
+      await unzipFileData("$parentPath\\$latestVersion.zip", "$parentPath");
     } catch (e) {
       await CustomDialog(context, "Erreur", "Erreur ${e.toString()}");
       return false;
@@ -391,54 +383,8 @@ class HomePageStatefull extends State<HomePage> {
         Directory(p.join(destinationPath, filename)).create(recursive: true);
       }
     }
+    Directory(zipFilePath).deleteSync();
   }
 
-  Future<void> moveOldFiles(List<String> listOfOldFiles) async {
-    var currentPath = Directory.current.path;
-    String folderToMoveOldThings = await createBackupFolder(currentPath);
 
-    for (String element in listOfOldFiles) {
-      if (!element.contains("data_old.old")) {
-        File file = File(element);
-        String newFilePath =
-            '${folderToMoveOldThings}\\${file.uri.pathSegments.last}';
-
-        try {
-          // Moving the file
-          await file.rename(newFilePath);
-          print('File moved successfully to $newFilePath');
-        } catch (e) {
-          // Handle the error, e.g., file not found, permission issues, etc.
-          print('Error moving file: $e');
-        }
-      } else {
-        moveOldFolder(element, folderToMoveOldThings);
-      }
-    }
-  }
-
-  Future<void> moveOldFolder(String folderToMove, String folderToMoveIn) async {
-    Directory directory = Directory(folderToMove);
-
-    try {
-      if (await directory.exists()) {
-        // Moving the folder
-        await directory.rename('$folderToMoveIn\\data_old.old');
-      } else {
-        print('Source folder does not exist.');
-      }
-    } catch (e) {
-      // Handle the error, e.g., folder not found, permission issues, etc.
-      print('Error moving folder: $e');
-    }
-  }
-
-  Future<String> createBackupFolder(String currentPath) async {
-    DateTime now = new DateTime.now();
-    DateTime date = new DateTime(now.year, now.month, now.day);
-    String fileName = date.toString().replaceAll(RegExp(r'[^A-Za-z0-9]'), '');
-    var folderToMoveOldThings = "$currentPath\\$fileName";
-    Directory(folderToMoveOldThings).create();
-    return folderToMoveOldThings;
-  }
 }

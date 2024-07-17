@@ -47,6 +47,7 @@ dependencies:
   screen_retriever: ^0.1.9
   dio: ^5.5.0+1
   simple_loading_dialog: ^1.0.0
+  archive: ^3.6.1
 
 dev_dependencies:
   flutter_test:

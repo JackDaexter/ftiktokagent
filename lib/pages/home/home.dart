@@ -5,6 +5,7 @@ import 'dart:developer';
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:math' as math;
+import 'package:path/path.dart' as p;
 
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
@@ -15,6 +16,7 @@ import 'package:my_app/pages/home/datagrid/datagrid.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:simple_loading_dialog/simple_loading_dialog.dart';
 import 'package:updat/updat.dart';
+import 'package:archive/archive.dart';
 
 import '../../components/custom_dialog.dart';
 import '../../core/Streamer.dart';
@@ -33,7 +35,7 @@ class HomePageStatefull extends State<HomePage> {
   final List<Streamer> streamers = <Streamer>[];
   final Map<Streamer, ReceivePort> receivePort = HashMap(); // Is a HashMap
   Timer? timer;
-  final String appVersion = "0.1.5";
+  final String appVersion = "0.1.4";
   Color color = const Color(0xff1890ff);
 
   HomePageStatefull({Key? key}) {
@@ -216,8 +218,6 @@ class HomePageStatefull extends State<HomePage> {
 
             return "https://github.com/JackDaexter/ftiktokagent/releases/latest/download/my_app.exe";
           },
-
-
           appName: "ftiktokagent", // This is used to name the downloaded files.
           currentVersion: appVersion,
           callback: (status) {
@@ -332,6 +332,8 @@ class HomePageStatefull extends State<HomePage> {
 
   Future<void> renameFolder(String currentPath, String newPath) async {
     Directory directory = Directory(currentPath);
+    await CustomDialog(context, "Renommage du dossier",
+        "Renommage du dossier $currentPath en $newPath");
     try {
       // Renaming the folder
       await directory.rename(newPath);
@@ -343,39 +345,100 @@ class HomePageStatefull extends State<HomePage> {
   }
 
   Future<bool> downloadUpdate() async {
-    var oldFilePath = [];
-    var oldFolderPath = [];
+    List<String> oldFilePath = <String>[];
     var currentPath = Directory.current.path;
     try {
-      await renameFolder(
-          "C:\\Users\\franc\\IdeaProjects\\ftiktokagent\\build\\windows\\x64\\runner\\Release\\data",
-          "C:\\Users\\franc\\IdeaProjects\\ftiktokagent\\build\\windows\\x64\\runner\\Release\\data_old");
-      oldFolderPath.add("C:\\Users\\franc\\IdeaProjects\\ftiktokagent\\build\\windows\\x64\\runner\\Release\\data_old");
       await Dio().download(
           "https://github.com/JackDaexter/ftiktokagent/releases/latest/download/data.zip",
-          "C:\\Users\\franc\\IdeaProjects\\ftiktokagent\\build\\windows\\x64\\runner\\Release\\data.zip");
-      await unzipDataFolder();
+          "$currentPath\\data.zip");
+      sleep(const Duration(seconds: 5));
+      await renameFolder("$currentPath\\data", "$currentPath\\data_old.old");
+      await unzipFileData("$currentPath\\data.zip", "$currentPath");
+      //oldFilePath.add("$currentPath\\data.zip");
+      //oldFilePath.add("$currentPath\\data_old.old");
 
       await renameFile(
-          "C:\\Users\\franc\\IdeaProjects\\ftiktokagent\\build\\windows\\x64\\runner\\Release\\WinSparkle.dll",
-          "C:\\Users\\franc\\IdeaProjects\\ftiktokagent\\build\\windows\\x64\\runner\\Release\\WinSparkle_old.dll");
-      oldFilePath.add("C:\\Users\\franc\\IdeaProjects\\ftiktokagent\\build\\windows\\x64\\runner\\Release\\WinSparkle_old.dll");
+          "$currentPath\\WinSparkle.dll", "$currentPath\\WinSparkle_old.dll");
+
+      oldFilePath.add("$currentPath\\WinSparkle_old.dll");
       await Dio().download(
           "https://github.com/JackDaexter/ftiktokagent/releases/latest/download/WinSparkle.dll",
-          "C:\\Users\\franc\\IdeaProjects\\ftiktokagent\\build\\windows\\x64\\runner\\Release\\WinSparkle.dll");
+          "$currentPath\\WinSparkle.dll");
+      moveOldFiles(oldFilePath);
     } catch (e) {
+      await CustomDialog(context, "Erreur", "Erreur ${e.toString()}");
       return false;
     }
     return true;
   }
 
-  Future<void> unzipDataFolder() async {
-    var currentPath = Directory.current.path;
-    try {
-      await Process.run(
-          "7z", ["x", "C:\\Users\\franc\\IdeaProjects\\ftiktokagent\\build\\windows\\x64\\runner\\Release\\data.zip", "-oC:\\Users\\franc\\IdeaProjects\\ftiktokagent\\build\\windows\\x64\\runner\\Release"]);
-    } catch (e) {
-      rethrow;
+  Future<void> unzipFileData(String zipFilePath, String destinationPath) async {
+    // Read the zip file from disk.
+    final bytes = File(zipFilePath).readAsBytesSync();
+
+    // Decode the zip file.
+    final archive = ZipDecoder().decodeBytes(bytes);
+
+    // Extract the contents of the zip archive to disk.
+    for (final file in archive) {
+      final filename = file.name;
+      if (file.isFile) {
+        final data = file.content as List<int>;
+        File(p.join(destinationPath, filename))
+          ..createSync(recursive: true)
+          ..writeAsBytesSync(data);
+      } else {
+        Directory(p.join(destinationPath, filename)).create(recursive: true);
+      }
     }
+  }
+
+  Future<void> moveOldFiles(List<String> listOfOldFiles) async {
+    var currentPath = Directory.current.path;
+    String folderToMoveOldThings = await createBackupFolder(currentPath);
+
+    for (String element in listOfOldFiles) {
+      if (!element.contains("data_old.old")) {
+        File file = File(element);
+        String newFilePath =
+            '${folderToMoveOldThings}\\${file.uri.pathSegments.last}';
+
+        try {
+          // Moving the file
+          await file.rename(newFilePath);
+          print('File moved successfully to $newFilePath');
+        } catch (e) {
+          // Handle the error, e.g., file not found, permission issues, etc.
+          print('Error moving file: $e');
+        }
+      } else {
+        moveOldFolder(element, folderToMoveOldThings);
+      }
+    }
+  }
+
+  Future<void> moveOldFolder(String folderToMove, String folderToMoveIn) async {
+    Directory directory = Directory(folderToMove);
+
+    try {
+      if (await directory.exists()) {
+        // Moving the folder
+        await directory.rename('$folderToMoveIn\\data_old.old');
+      } else {
+        print('Source folder does not exist.');
+      }
+    } catch (e) {
+      // Handle the error, e.g., folder not found, permission issues, etc.
+      print('Error moving folder: $e');
+    }
+  }
+
+  Future<String> createBackupFolder(String currentPath) async {
+    DateTime now = new DateTime.now();
+    DateTime date = new DateTime(now.year, now.month, now.day);
+    String fileName = date.toString().replaceAll(RegExp(r'[^A-Za-z0-9]'), '');
+    var folderToMoveOldThings = "$currentPath\\$fileName";
+    Directory(folderToMoveOldThings).create();
+    return folderToMoveOldThings;
   }
 }

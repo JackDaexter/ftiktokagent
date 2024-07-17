@@ -46,7 +46,7 @@ jobs:
           Move-Item -Path ./build/windows/x64/runner/Release/flutter_windows.dll -Destination ${{github.ref_name}} -ErrorAction Stop
           Move-Item -Path ./build/windows/x64/runner/Release/window_manager_plugin.dll -Destination ${{github.ref_name}} -ErrorAction Stop
           Move-Item -Path ./build/windows/x64/runner/Release/WinSparkle.dll -Destination ${{github.ref_name}} -ErrorAction Stop
-          Compress-Archive -Path ./build/windows/x64/runner/Release/data,  -DestinationPath ./build/windows/x64/runner/Release/${{github.ref_name}}.zip
+          Compress-Archive -Path ./build/windows/x64/runner/Release/data  -DestinationPath ./build/windows/x64/runner/Release/${{github.ref_name}}.zip
 
       - name: List files
         shell: pwsh
